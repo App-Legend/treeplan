@@ -1,0 +1,39 @@
+# 로컬 실행용: PostgreSQL + API 서버
+#   docker compose up -d db          → DB만 띄우고 API는 ./gradlew bootRun 으로 실행
+#   docker compose up -d --build     → DB와 API 서버를 모두 컨테이너로 실행 (JDK 설치 불필요)
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: seokkeobom
+      POSTGRES_USER: seokkeobom
+      POSTGRES_PASSWORD: seokkeobom
+    ports:
+      # 호스트 5432는 다른 프로젝트의 PostgreSQL이 쓰는 경우가 많아 5433으로 연다 (컨테이너 안은 그대로 5432)
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seokkeobom"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/seokkeobom
+      DB_USERNAME: seokkeobom
+      DB_PASSWORD: seokkeobom
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-dev-only-secret-change-me}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      PDF_FONT_PATH: /usr/share/fonts/truetype/nanum/NanumGothic.ttf
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:

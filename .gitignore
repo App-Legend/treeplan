@@ -1,0 +1,15 @@
+.env
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# backend
+backend/build/
+backend/.gradle/
+backend/bin/
+!backend/gradle/wrapper/gradle-wrapper.jar
+
+# frontend
+frontend/node_modules/
+frontend/dist/
