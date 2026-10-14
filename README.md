@@ -52,7 +52,7 @@ cd frontend && npm install && npm run dev
 | 이름 | 기본값 | 설명 |
 |---|---|---|
 | `GEMINI_API_KEY` | (없음) | 없으면 **예시(mock) 모드**. 결과에 "예시 모드" 표시가 붙음. 시연 대비용(위험 3) |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | 사용할 모델 이름 |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | 사용할 모델 이름. ⚠️ Docker 실행(방법 B)은 `docker-compose.yml`·`.env.example`의 기본값 `gemini-3.8-flash`를 씀 — 어느 쪽이 팀 키로 쓸 수 있는지 확인 후 하나로 맞출 것 |
 | `JWT_SECRET` | 개발용 값 | 32바이트 이상. 배포 시 반드시 변경 |
 | `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` | 로컬 compose 값 | |
 | `CORS_ORIGINS` | `http://localhost:5173` | 쉼표로 여러 개 |
@@ -141,5 +141,3 @@ User · RefreshToken · Session(`IdeaSession`) · SessionMember · Category · W
 - 로그인 토큰은 브라우저 `localStorage`에 저장합니다(수업 MVP 수준). XSS가 생기면 토큰이 노출될 수 있어 운영 단계에서는 HttpOnly 쿠키로 바꾸는 것이 안전합니다.
 - PDF 내보내기는 서버에 한글 폰트가 필요합니다. Docker 실행은 나눔고딕을 설치하고, 직접 실행하면 Windows 맑은 고딕·macOS AppleGothic을 자동으로 찾습니다. 못 찾으면 안내 메시지와 함께 TXT/MD를 쓰도록 합니다.
 - 화면 글꼴은 Pretendard(CDN)를 쓰고, 연결이 안 되면 시스템 한글 글꼴로 대체됩니다.
-#   t r e e p l a n  
- 
