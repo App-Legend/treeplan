@@ -85,12 +85,12 @@ cd frontend && npm run build        # 타입 검사 + 빌드
 | 6 로그인 | `components/LoginModal.tsx` |
 | 7 히스토리 사이드바 | `components/HistorySidebar.tsx` |
 
-### API 24개 (모두 `/api` 아래)
+### API 25개 (모두 `/api` 아래)
 | 화면 | 요청 | 컨트롤러 |
 |---|---|---|
 | 1 | `POST /sessions` (헤더 `Idempotency-Key`), `POST /sessions/join` | `SessionController` |
 | 2 | `GET /sessions/{id}`, `DELETE /sessions/{id}/members/me`, `POST /sessions/{id}/close` | `SessionController` |
-| 2 | `GET /categories`, `GET /categories/{id}/words?sessionId=` (뿌리 3개 + 세션 트리), `POST /words/{id}/expand` (AI 가지 뻗기) | `CategoryController`, `WordTreeService` |
+| 2 | `GET /categories`, `GET /categories/{id}/words?sessionId=` (뿌리 3개 + 세션 트리), `POST /words/{id}/expand` (AI 가지 뻗기), `DELETE /sessions/{id}/categories/{cid}/words` (트리 초기화) | `CategoryController`, `WordTreeService` |
 | 2 | WS 구독 `/topic/sessions/{id}/events` (엔드포인트 `/api/ws`) | `WebSocketConfig` |
 | 2, 4 | `POST /sessions/{id}/draws` | `DrawController` |
 | 4 | `POST /draws/{id}/idea`, `PUT /ideas/{id}/bookmark` | `IdeaController` |
