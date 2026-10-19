@@ -13,7 +13,7 @@
 
 ---
 
-API 전체 정리: [docs/API.md](docs/API.md)
+API 전체 정리: [docs/API.md](docs/API.md) · DB 설계: [docs/DB.md](docs/DB.md)
 
 ## 1. 실행 방법
 
