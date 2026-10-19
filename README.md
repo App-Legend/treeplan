@@ -52,10 +52,14 @@ cd frontend && npm install && npm run dev
 | 이름 | 기본값 | 설명 |
 |---|---|---|
 | `GEMINI_API_KEY` | (없음) | 없으면 **예시(mock) 모드**. 결과에 "예시 모드" 표시가 붙음. 시연 대비용(위험 3) |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | 사용할 모델 이름. ⚠️ Docker 실행(방법 B)은 `docker-compose.yml`·`.env.example`의 기본값 `gemini-3.8-flash`를 씀 — 어느 쪽이 팀 키로 쓸 수 있는지 확인 후 하나로 맞출 것 |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | 아이디어·결과물 생성 모델. `gemini-2.5-flash`는 새 사용자에게 제공되지 않음(2026-10 확인) |
+| `GEMINI_WORD_MODEL` | `gemini-3.5-flash-lite` | 단어 트리 가지 뻗기 모델. 자주 호출되므로 빠른 모델 (측정 약 1~2초) |
+| `GEMINI_FALLBACK_MODEL` | `gemini-3.5-flash` | 503(사용량 많음)이 재시도 뒤에도 계속되거나 404·429일 때 대신 쓰는 모델. 비우면 사용 안 함 |
+| `AI_TIMEOUT_SECONDS` / `AI_WORD_TIMEOUT_SECONDS` | `120` / `30` | AI 응답 대기 시간 (3.8-flash는 1분 넘게 걸린 적이 있음) |
 | `JWT_SECRET` | 개발용 값 | 32바이트 이상. 배포 시 반드시 변경 |
 | `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` | 로컬 compose 값 | |
 | `CORS_ORIGINS` | `http://localhost:5173` | 쉼표로 여러 개 |
+| `DB_PORT` (compose) | `5433` | 호스트에서 여는 DB 포트. 다른 PostgreSQL이 5433을 쓰면 `5434` 등으로 바꾸고 `DB_URL`도 맞출 것 |
 | `PDF_FONT_PATH` | (자동 탐색) | PDF 내보내기용 한글 TTF 경로 |
 
 ### 테스트
@@ -81,28 +85,37 @@ cd frontend && npm run build        # 타입 검사 + 빌드
 | 6 로그인 | `components/LoginModal.tsx` |
 | 7 히스토리 사이드바 | `components/HistorySidebar.tsx` |
 
-### API 22개 (모두 `/api` 아래)
+### API 24개 (모두 `/api` 아래)
 | 화면 | 요청 | 컨트롤러 |
 |---|---|---|
 | 1 | `POST /sessions` (헤더 `Idempotency-Key`), `POST /sessions/join` | `SessionController` |
 | 2 | `GET /sessions/{id}`, `DELETE /sessions/{id}/members/me`, `POST /sessions/{id}/close` | `SessionController` |
-| 2 | `GET /categories`, `GET /categories/{id}/words` | `CategoryController` |
+| 2 | `GET /categories`, `GET /categories/{id}/words?sessionId=` (뿌리 3개 + 세션 트리), `POST /words/{id}/expand` (AI 가지 뻗기) | `CategoryController`, `WordTreeService` |
 | 2 | WS 구독 `/topic/sessions/{id}/events` (엔드포인트 `/api/ws`) | `WebSocketConfig` |
 | 2, 4 | `POST /sessions/{id}/draws` | `DrawController` |
 | 4 | `POST /draws/{id}/idea`, `PUT /ideas/{id}/bookmark` | `IdeaController` |
 | 4~5 | `POST /ideas/{id}/result`, `GET·PATCH·DELETE /results/{id}`, `POST /results/{id}/regenerate`, `GET /results/{id}/export?format=pdf\|txt\|md` | `ResultController` |
-| 6 | `POST /auth/login`, `/auth/signup`, `/auth/password-reset`, `/auth/refresh` | `AuthController` |
+| 6 | `POST /auth/guest` (로그인 없이 시작), `/auth/login`, `/auth/signup`, `/auth/password-reset`, `/auth/refresh` | `AuthController` |
 | 7 | `GET /history?q=&categoryId=&cursor=` | `HistoryController` |
 
 30일 무활동 만료는 API가 아니라 `SessionExpiryJob`(매일 04:00, 서울 시간)이 처리합니다.
 
 ### 데이터 덩어리 10개
 User · RefreshToken · Session(`IdeaSession`) · SessionMember · Category · WordNode · ResultTemplate · Draw · Idea · Result.
-처음 실행할 때 `DataSeeder`가 고정 카테고리 3개, 분야별 단어 트리(음식 42개 · 프로그램 40개 · 공모전 40개), 절차 템플릿(결과물 양식)을 넣습니다.
+처음 실행할 때 `DataSeeder`가 고정 카테고리 3개, 카테고리별 고정 하위 카테고리 3개(트리의 뿌리), 절차 템플릿(결과물 양식)을 넣습니다.
+단어는 미리 넣지 않고 **세션마다 AI가 뻗습니다(뿌리당 최대 20개)**. 하위 카테고리 이름은 `category/Subcategories.java`에 있으며 팀 확정 전 임시 값입니다. 이름을 바꾸면 다음 실행 때 뿌리가 자동으로 새 구성으로 맞춰집니다(세션 단어·기록은 유지).
+
+### 비로그인(게스트) 흐름
+1. 화면이 시작할 때 토큰이 없으면 `POST /auth/guest`로 게스트 토큰을 받아 그대로 모든 API에 씁니다.
+2. 결과물 응답의 `saved`가 `false`면 `loginPrompt`("히스토리로 남기고 싶다면 로그인해 주세요. 나가면 저장되지 않습니다.")로 팝업을 띄웁니다.
+3. 팝업에서 로그인·가입할 때 **게스트 토큰을 `Authorization` 헤더로 함께 보내면** 게스트 작업이 계정으로 옮겨져 히스토리에 남습니다.
+4. 게스트는 히스토리 조회·팀 코드 입장이 막히고(`403 LOGIN_REQUIRED`), 세션 응답의 `teamCode`가 `null`입니다(협업은 로그인 필요).
 
 ### 팀이 직접 다듬어야 할 핵심 파일
 - `backend/.../ai/PromptBuilder.java` — AI 공통 지시문 (세 단어 모두 사용, 진부함 회피, 사실 단정 금지)
-- `backend/.../seed/DataSeeder.java` — 단어 풀과 분야별 양식·지시문. 수정 후에는 DB의 `categories`, `word_nodes`, `result_templates`를 비우고 재실행
+- `backend/.../ai/PromptBuilder.java`의 `wordsPrompt` — AI 단어 생성 지시문 (분야·하위 카테고리 범위, 중복 금지)
+- `backend/.../category/Subcategories.java` — 하위 카테고리 이름(임시)과 예시 모드용 단어
+- `backend/.../seed/DataSeeder.java` — 분야별 결과물 양식·지시문. 양식을 고친 뒤에는 DB의 `categories`, `result_templates`를 비우고 재실행
 
 ---
 
@@ -117,7 +130,7 @@ User · RefreshToken · Session(`IdeaSession`) · SessionMember · Category · W
 | 항목 | 문서 상황 | 이렇게 구현함 |
 |---|---|---|
 | 추출 카테고리 수 | 6주차 API는 "카테고리 1개 이상(목록)", 3주차 데이터 요구사항은 "다른 분야와 섞지 않음" | 요구사항을 우선해 **1개만 허용** (여러 개 보내면 400) |
-| 로그인 필수 여부 | 화면 1은 로그인이 보조 행동, 6주차는 세션·단어 API 모두 인증 필요 | **시작 전에 로그인**. 3분 목표(목표 1)를 잴 때 가입 시간을 포함할지 정해야 함 |
+| 로그인 필수 여부 | 기획 변경: 로그인 없이 작업, 결과 양식 생성 시 로그인 권유 | **게스트 토큰**으로 핵심 흐름 전체 사용. 로그인하면 게스트 작업을 계정으로 이전 |
 | 팀 코드 (3주차 ⚠️) | 협업인지 공유인지 미정 → 6주차에서 "참여자 모두 열람" 결정 | 6주차 결정대로. 공동 편집은 없고 입장·퇴장·새 결과물·종료 **알림만** 실시간 (기획서 Won't "실시간 다중 사용자 협업"과의 경계) |
 | 종료·만료 세션 | 진행 여부 확인 범위가 불명확 | 결과물 **열람·내보내기는 허용**, 생성·수정은 차단 |
 | 로그인 연속 실패 | "연속 실패 횟수 확인"만 명시 | 5회 실패 시 5분 잠금 (User에 필드 2개 추가) |
