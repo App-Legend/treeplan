@@ -241,12 +241,19 @@ function Experience({ route }: { route: string }) {
   useEffect(() => {
     if (preview) return;
     const off = api.onAuthChange((u) => setUser(u && !u.guest ? u.name : null));
-    api
-      .categories()
-      .then((cs) => setCatIds(Object.fromEntries(cs.map((c) => [c.name, c.id]))))
-      .catch((e) => notify(errorText(e)));
+    // 서버가 아직 안 떠 있으면 카테고리 목록을 3초마다 다시 받아 온다
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const loadCategories = () =>
+      api
+        .categories()
+        .then((cs) => setCatIds(Object.fromEntries(cs.map((c) => [c.name, c.id]))))
+        .catch(() => {
+          retry = setTimeout(loadCategories, 3000);
+        });
+    loadCategories();
     return () => {
       off();
+      if (retry) clearTimeout(retry);
     };
   }, []);
   // 세션 화면에 왔는데 서버 세션이 없으면(처음·이전 데모 데이터) 새로 만든다. 있으면 참여자·팀 코드를 갱신한다.
@@ -386,6 +393,11 @@ function Experience({ route }: { route: string }) {
     setWorking(true);
     try {
       const r = await api.createResult(idea.ideaId);
+      if (r.status !== "SUCCESS") {
+        // 실패하면 빈 결과 화면으로 넘어가지 않고 아이디어 창에서 다시 시도하게 한다
+        notify(r.failureReason || "실행안을 만들지 못했어요. 다시 시도해 주세요.");
+        return;
+      }
       const p = toPlan(r);
       setServerResult(p);
       go("/result/" + p.id);

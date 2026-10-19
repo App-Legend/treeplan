@@ -83,6 +83,8 @@ export default function TreeCanvas({
   const [tool, setTool] = useState<"hand" | "pointer">("hand");
   const [tree, setTree] = useState<WordTree | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [busy, setBusy] = useState<Set<number>>(new Set());
   const [space, setSpace] = useState(false);
   const area = useRef<HTMLDivElement>(null);
@@ -105,11 +107,20 @@ export default function TreeCanvas({
   useEffect(() => {
     setTree(null);
     setPan({ x: 0, y: 0 });
-    if (!sessionId || !categoryId) return;
+    setLoadError("");
+    if (!sessionId || !session.category) return;
     let alive = true;
     setLoading(true);
     (async () => {
       try {
+        // 카테고리 번호를 아직 모르면(처음 목록을 못 받았을 때 등) 서버에 물어 채운다
+        if (!categoryId) {
+          const found = (await api.categories()).find((c) => c.name === session.category);
+          if (!alive) return;
+          if (!found) throw new api.ApiError(404, "CATEGORY_NOT_FOUND", "분야를 찾지 못했어요. 다시 선택해 주세요.");
+          update({ ...session, categoryId: found.id });
+          return; // categoryId가 바뀌면 이 효과가 다시 실행되어 트리를 불러온다
+        }
         let t = await api.wordTree(categoryId, sessionId);
         if (!alive) return;
         setTree(t);
@@ -122,7 +133,7 @@ export default function TreeCanvas({
           if (alive) setTree(t);
         }
       } catch (e) {
-        if (alive) notify(messageOf(e));
+        if (alive) setLoadError(messageOf(e));
       } finally {
         if (alive) {
           setLoading(false);
@@ -133,7 +144,7 @@ export default function TreeCanvas({
     return () => {
       alive = false;
     };
-  }, [sessionId, categoryId]);
+  }, [sessionId, categoryId, session.category, reloadKey]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -353,7 +364,12 @@ export default function TreeCanvas({
       ) : !layout ? (
         <div className="empty-tree">
           <h3>{loading ? "단어 트리를 불러오고 있어요" : "단어 트리를 불러오지 못했어요"}</h3>
-          <p>{loading ? "잠시만 기다려 주세요." : "분야를 다시 선택해 주세요."}</p>
+          <p>{loading ? "잠시만 기다려 주세요." : loadError || "잠시 후 다시 시도해 주세요."}</p>
+          {!loading && (
+            <button className="fix-toggle" onClick={() => setReloadKey((k) => k + 1)}>
+              다시 불러오기
+            </button>
+          )}
         </div>
       ) : (
         <div className="tree" style={treeStyle}>

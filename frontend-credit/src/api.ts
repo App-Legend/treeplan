@@ -72,10 +72,15 @@ async function raw(method: string, path: string, body?: unknown, token?: string)
   const text = await res.text();
   const data = text ? safeJson(text) : null;
   if (!res.ok) {
+    // 서버가 JSON 오류를 주지 않은 5xx = 개발 서버 프록시가 백엔드에 닿지 못한 경우가 대부분
+    const unreachable = !data && res.status >= 500;
     throw new ApiError(
       res.status,
-      data?.code ?? "HTTP_" + res.status,
-      data?.message ?? "요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.",
+      data?.code ?? (unreachable ? "NETWORK" : "HTTP_" + res.status),
+      data?.message ??
+        (unreachable
+          ? "서버에 연결하지 못했어요. 백엔드가 실행 중인지 확인해 주세요."
+          : "요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요."),
     );
   }
   return data;
