@@ -58,8 +58,8 @@ cd frontend-credit && npm install && npm run dev
 | `GEMINI_API_KEY` | (없음) | 없으면 **예시(mock) 모드**. 결과에 "예시 모드" 표시가 붙음. 시연 대비용(위험 3) |
 | `GEMINI_MODEL` | `gemini-3.8-flash` | 아이디어·결과물 생성 모델. `gemini-2.5-flash`는 새 사용자에게 제공되지 않음(2026-10 확인) |
 | `GEMINI_WORD_MODEL` | `gemini-3.5-flash-lite` | 단어 트리 가지 뻗기 모델. 자주 호출되므로 빠른 모델 (측정 약 1~2초) |
-| `GEMINI_FALLBACK_MODEL` | `gemini-3.5-flash` | 503(사용량 많음)이 재시도 뒤에도 계속되거나 404·429일 때 대신 쓰는 모델. 비우면 사용 안 함 |
-| `AI_TIMEOUT_SECONDS` / `AI_WORD_TIMEOUT_SECONDS` | `120` / `30` | AI 응답 대기 시간 (3.8-flash는 1분 넘게 걸린 적이 있음) |
+| `GEMINI_FALLBACK_MODEL` | `gemini-3.5-flash,gemini-3.1-flash-lite` | 기본 모델이 시간 초과·503·429·404로 실패하면 쉼표 순서대로 대신 쓰는 모델들. 비우면 사용 안 함 |
+| `AI_TIMEOUT_SECONDS` / `AI_WORD_TIMEOUT_SECONDS` / `AI_FALLBACK_TIMEOUT_SECONDS` | `45` / `20` / `60` | AI 응답 대기 시간. 기본 모델은 평소 10~15초라, 45초를 넘기면 기다리지 않고 대체 모델로 넘어감 |
 | `JWT_SECRET` | 개발용 값 | 32바이트 이상. 배포 시 반드시 변경 |
 | `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` | 로컬 compose 값 | |
 | `CORS_ORIGINS` | `http://localhost:5173` | 쉼표로 여러 개 |

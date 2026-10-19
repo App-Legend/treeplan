@@ -11,7 +11,7 @@
 | 로그인 필요 기능 | 히스토리 조회, 팀 코드 입장. 게스트가 부르면 `403 LOGIN_REQUIRED` |
 | 오류 응답 | `{ "code": "ROOT_FULL", "message": "화면에 그대로 보여 줄 한국어 문장" }` |
 | 토큰 만료 | 액세스 30분, 리프레시 14일. `401`이면 `POST /auth/refresh` 후 재시도 |
-| AI 모델 | 아이디어·결과물 `gemini-3.8-flash`, 단어 생성 `gemini-3.5-flash-lite`, 실패 시 대체 `gemini-3.5-flash` (`.env`로 변경) |
+| AI 모델 | 아이디어·결과물 `gemini-3.8-flash`, 단어 생성 `gemini-3.5-flash-lite`. 실패(시간 초과 45초·503·429)하면 `gemini-3.5-flash` → `gemini-3.1-flash-lite` 순서로 대신 시도 (`.env`로 변경) |
 | 응답 시간(실측) | 단어 뻗기 약 1~2초, 아이디어·결과물 각 약 11~13초 (혼잡하면 1분 넘은 적 있음) |
 
 ## 핵심 흐름 순서
