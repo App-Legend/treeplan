@@ -205,7 +205,7 @@ export type HistoryItem = {
 export const categories = () => call<CategoryDto[]>("GET", "/categories");
 export const wordTree = (categoryId: number, sessionId: number) =>
   call<WordTree>("GET", `/categories/${categoryId}/words?sessionId=${sessionId}`);
-export const expand = (nodeId: number, sessionId: number, count = 5) =>
+export const expand = (nodeId: number, sessionId: number, count = 3) =>
   call<Expand>("POST", `/words/${nodeId}/expand`, { sessionId, count });
 
 export const createSession = (name: string) => call<{ sessionId: number; name: string; teamCode: string | null }>("POST", "/sessions", { name });

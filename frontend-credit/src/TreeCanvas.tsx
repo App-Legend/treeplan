@@ -13,6 +13,7 @@ const PAD = 40; // 트리 바깥 여백
 const ROW = { root: 0, branch: 92, firstWord: 236, step: 116 };
 const BOTTOM = { root: 46, branch: 84, word: 64 }; // 노드 위쪽에서 선이 나가는 아래쪽까지
 const MAX_WORDS = 20;
+const WORDS_PER_EXPAND = 3; // 한 번 뻗을 때 AI가 만드는 단어 수
 
 type LNode = {
   id: number;
@@ -114,7 +115,7 @@ export default function TreeCanvas({
         setTree(t);
         if (t.wordCount === 0) {
           setBusy(new Set(t.groups.map((g) => g.id)));
-          const results = await Promise.allSettled(t.groups.map((g) => api.expand(g.id, sessionId, 5)));
+          const results = await Promise.allSettled(t.groups.map((g) => api.expand(g.id, sessionId, WORDS_PER_EXPAND)));
           const failed = results.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
           if (failed) notify(messageOf(failed.reason));
           t = await api.wordTree(categoryId, sessionId);
@@ -205,7 +206,7 @@ export default function TreeCanvas({
     if (!sessionId || !categoryId || busy.has(nodeId)) return;
     setBusy((b) => new Set(b).add(nodeId));
     try {
-      await api.expand(nodeId, sessionId, 5);
+      await api.expand(nodeId, sessionId, WORDS_PER_EXPAND);
       setTree(await api.wordTree(categoryId, sessionId));
     } catch (e) {
       notify(messageOf(e, `'${label}'에서 가지를 뻗지 못했어요.`));
@@ -300,7 +301,7 @@ export default function TreeCanvas({
         </div>
         {session.category && (
           <p className="legend desktop-only">
-            <span className="mono">5 / {MAX_WORDS}</span> = 이 가지에서 뻗은 단어 수 / 최대 {MAX_WORDS}개
+            <span className="mono">3 / {MAX_WORDS}</span> = 이 가지에서 뻗은 단어 수 / 최대 {MAX_WORDS}개
           </p>
         )}
       </div>
