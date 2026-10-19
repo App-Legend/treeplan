@@ -22,7 +22,8 @@ POST /sessions                → sessionId
 GET  /categories              → 카테고리 3개
 GET  /categories/{id}/words?sessionId=   → 하위 카테고리 3개(뿌리)
 POST /words/{뿌리id}/expand    → AI가 단어 3개 생성 (뿌리마다 가지 뻗기 최대 20번)
-POST /sessions/{id}/draws      → 단어 3개 확정(직접 고른 3개 또는 무작위)
+POST /sessions/{id}/draws      → 고정한 단어 3개로 조합 확정
+(DELETE /sessions/{id}/categories/{cid}/words → 트리 초기화)
 POST /draws/{drawId}/idea      → AI 아이디어
 POST /ideas/{ideaId}/result    → AI 실행안 (saved=false면 로그인 권유 팝업)
 POST /auth/signup|login (게스트 토큰을 헤더로) → 게스트 작업이 계정 히스토리로 이동
@@ -49,6 +50,8 @@ POST /auth/signup|login (게스트 토큰을 헤더로) → 게스트 작업이 
 | `GET /categories` | 없음 (로그인 불필요) | `[{id, name, slug}]` 3개 | |
 | `GET /categories/{id}/words?sessionId=` | `sessionId` 생략 시 뿌리만 | `WordTree` | sessionId가 있으면 참여자인지 |
 | `POST /words/{nodeId}/expand` | `{sessionId, count?}` (기본 3, 최대 10) | `{parentId, rootId, words:[{id,text,children}], rootWordCount, expandCount, remaining, aiMode}` | 뿌리당 가지 뻗기 20번 이하, 같은 뿌리 중복 요청, 이미 나온 단어 제외, 진행 중인 세션 |
+
+| `DELETE /sessions/{sessionId}/categories/{categoryId}/words` | 없음 | `{categoryId, deleted}` | **트리 초기화**: 이 세션에서 이 분야에 뻗은 단어를 모두 지움(뻗기 횟수도 0). 단어를 만드는 중이면 `ALREADY_EXPANDING`. 팀원에게 `TREE_RESET` 알림 |
 
 - `nodeId`는 뿌리(하위 카테고리) 또는 단어 ID. 단어에서 뻗으면 그 아래로 깊어진다.
 - 단어 트리는 **세션마다 따로** 자란다. 팀원이 뻗으면 실시간 알림 `TREE_EXPANDED`.
@@ -120,6 +123,7 @@ POST /auth/signup|login (게스트 토큰을 헤더로) → 게스트 작업이 
 |---|---|
 | `MEMBER_JOINED` / `MEMBER_LEFT` | `{userId, name}` |
 | `TREE_EXPANDED` | `{categoryId, rootId, parentId, words, byUserId}` |
+| `TREE_RESET` | `{categoryId, byUserId}` |
 | `RESULT_CREATED` | `{resultId, title, authorId, authorName}` |
 | `SESSION_CLOSED` | `{closedAt}` |
 

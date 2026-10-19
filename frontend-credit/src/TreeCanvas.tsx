@@ -144,7 +144,7 @@ export default function TreeCanvas({
     return () => {
       alive = false;
     };
-  }, [sessionId, categoryId, session.category, reloadKey]);
+  }, [sessionId, categoryId, session.category, reloadKey, session.reroll]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {

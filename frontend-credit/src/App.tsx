@@ -25,6 +25,7 @@ type Overlay =
   | "members"
   | "delete"
   | "save"
+  | "reset"
   | null;
 const go = (path: string) => {
   location.hash = path;
@@ -340,12 +341,17 @@ function Experience({ route }: { route: string }) {
       reroll: 0,
     });
   }
-  async function reroll() {
+  const unfix = (i: number) =>
+    updateSession({ ...session, words: session.words.filter((_, n) => n !== i) });
+  /** 트리 초기화: 이 분야에서 뻗은 단어를 모두 지우고, 고정한 단어도 비운 뒤 처음처럼 다시 뻗는다 */
+  async function resetTree() {
+    setOverlay(null);
     if (!session.sessionId || !session.categoryId) return;
     try {
-      const d = await api.draw(session.sessionId, session.categoryId);
-      updateSession({ ...session, words: d.words, drawId: d.drawId, drawWords: d.words, reroll: session.reroll + 1 });
-      notify("트리에서 단어 3개를 새로 뽑았어요.");
+      await api.resetTree(session.sessionId, session.categoryId);
+      // reroll 값을 바꾸면 트리 캔버스가 다시 불러오고, 비어 있으니 뿌리 3개에서 자동으로 뻗는다
+      updateSession({ ...session, words: [], drawId: undefined, drawWords: undefined, reroll: session.reroll + 1 });
+      notify("트리를 초기화했어요. 새 단어를 뻗고 있어요.");
     } catch (e) {
       notify(errorText(e));
     }
@@ -795,6 +801,18 @@ function Experience({ route }: { route: string }) {
                 <div
                   key={i}
                   className={`combo-slot ${session.words[i] ? "filled" : ""}`}
+                  // 고정된 칸을 한 번 더 누르면 고정 해제
+                  role={session.words[i] ? "button" : undefined}
+                  tabIndex={session.words[i] ? 0 : undefined}
+                  aria-label={session.words[i] ? `${session.words[i]} 고정 해제` : undefined}
+                  style={session.words[i] ? { cursor: "pointer" } : undefined}
+                  onClick={() => session.words[i] && unfix(i)}
+                  onKeyDown={(e) => {
+                    if (session.words[i] && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      unfix(i);
+                    }
+                  }}
                 >
                   <div>
                     <span className="slot-number">{i + 1}</span>
@@ -802,12 +820,10 @@ function Experience({ route }: { route: string }) {
                     {session.words[i] && (
                       <button
                         aria-label={`${session.words[i]} 고정 해제`}
-                        onClick={() =>
-                          updateSession({
-                            ...session,
-                            words: session.words.filter((_, n) => n !== i),
-                          })
-                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          unfix(i);
+                        }}
                       >
                         <Icon name="close" />
                       </button>
@@ -828,7 +844,7 @@ function Experience({ route }: { route: string }) {
                   disabled={!session.category}
                   onClick={() => {
                     if (!preview) {
-                      reroll();
+                      setOverlay("reset");
                       return;
                     }
                     updateSession({
@@ -841,7 +857,7 @@ function Experience({ route }: { route: string }) {
                   }}
                 >
                   <Icon name="shuffle" />
-                  다시 뽑기
+                  {preview ? "다시 뽑기" : "트리 초기화"}
                 </Button>
                 <Button
                   variant="primary"
@@ -1483,6 +1499,22 @@ function Experience({ route }: { route: string }) {
               }}
             >
               삭제
+            </Button>
+          </div>
+        </Modal>
+      )}
+      {overlay === "reset" && (
+        <Modal label="트리 초기화 확인" onClose={closeOverlay} className="confirm-modal">
+          <h2>트리를 초기화할까요?</h2>
+          <p>
+            {session.category}에서 뻗은 단어와 고정한 단어가 모두 지워지고,
+            <br />
+            처음처럼 새 단어를 다시 뻗어요.{session.team ? " 팀원의 트리도 함께 초기화돼요." : ""}
+          </p>
+          <div>
+            <Button onClick={closeOverlay}>취소</Button>
+            <Button variant="dark" onClick={resetTree}>
+              초기화
             </Button>
           </div>
         </Modal>
