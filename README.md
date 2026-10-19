@@ -5,12 +5,15 @@
 
 | 상자 | 기술 | 폴더 |
 |---|---|---|
-| 웹 클라이언트 | React 18 + TypeScript (Vite) | `frontend/` |
+| 웹 클라이언트 | React 19 + TypeScript (Vite) — **사용 중** | `frontend-credit/` |
+| (이전 MVP 화면, 보관용) | React 18 + TypeScript (Vite) | `frontend/` |
 | API 서버 (+ 실시간 채널) | Spring Boot 3.5, Spring Security + JWT, WebSocket/STOMP | `backend/` |
 | 데이터베이스 | PostgreSQL 16 | `docker-compose.yml` |
 | AI 생성 서비스 | Gemini API (키가 없으면 예시 모드) | `backend/.../ai/` |
 
 ---
+
+API 전체 정리: [docs/API.md](docs/API.md)
 
 ## 1. 실행 방법
 
@@ -30,8 +33,8 @@ cd backend
 export GEMINI_API_KEY=발급받은키        # 생략하면 예시 모드
 ./gradlew bootRun                        # Windows: gradlew.bat bootRun
 
-# 3) 웹 (http://localhost:5173)
-cd frontend
+# 3) 웹 (http://127.0.0.1:5173)
+cd frontend-credit
 npm install
 npm run dev
 ```
@@ -41,10 +44,11 @@ npm run dev
 ```bash
 cp .env.example .env      # GEMINI_API_KEY, JWT_SECRET 채우기
 docker compose up -d --build
-cd frontend && npm install && npm run dev
+cd frontend-credit && npm install && npm run dev
 ```
 
-브라우저에서 http://localhost:5173 → **새로 시작하기** → 회원가입 → 카테고리 선택 → 단어 3개 → **창조** 순서로 핵심 흐름을 확인할 수 있습니다.
+브라우저에서 http://127.0.0.1:5173 → **새로 시작하기**(로그인 없이) → 카테고리 선택 → AI가 뻗은 트리에서 단어 3개 고정 → **생성** → 실행안 순서로 핵심 흐름을 확인할 수 있습니다.
+프론트 개발 서버는 `/api`를 최상위 `.env`의 `PORT`(없으면 8080) 백엔드로 넘깁니다. 8080을 다른 프로그램이 쓰면 `.env`에 `PORT=8081`처럼 적으세요.
 팀 기능은 다른 브라우저(또는 시크릿 창)에서 다른 계정으로 가입한 뒤 화면 상단의 팀 코드로 입장하면 됩니다.
 
 ### 환경변수 (API 서버)
@@ -66,7 +70,7 @@ cd frontend && npm install && npm run dev
 
 ```bash
 cd backend && ./gradlew test        # 핵심 흐름 통합 테스트 (H2 + 예시 AI, DB 불필요)
-cd frontend && npm run build        # 타입 검사 + 빌드
+cd frontend-credit && npm run build # 타입 검사 + 빌드
 ```
 
 `CoreFlowTest`는 가입 → 세션 생성(멱등 키) → 단어 추출 20회(항상 3개·같은 분야만) → 고정/제외 → 창조 → 결과물(양식 항목·조합 이유 포함) → 수정·보완·내보내기 → 팀원 입장·권한 → 히스토리 → 삭제 → 세션 종료까지 확인합니다.
@@ -75,7 +79,7 @@ cd frontend && npm run build        # 타입 검사 + 빌드
 
 ## 2. 문서와 코드의 대응
 
-### 화면 → 코드
+### 화면 → 코드 (이전 MVP `frontend/` 기준. 사용 중인 `frontend-credit/`는 `src/App.tsx`·`src/TreeCanvas.tsx`·`src/api.ts`)
 | 화면 | 파일 |
 |---|---|
 | 1 시작·팀 입장 | `frontend/src/pages/StartPage.tsx` |
