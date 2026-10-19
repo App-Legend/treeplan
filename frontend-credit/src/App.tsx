@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Button, Close, Icon, Logo, Modal, Numbered } from "./ui";
 import TreeCanvas from "./TreeCanvas";
+import TreeCanvasPreview from "./TreeCanvasPreview";
+import * as api from "./api";
 import {
   categories,
   initialSession,
@@ -22,9 +24,40 @@ type Overlay =
   | "history"
   | "members"
   | "delete"
+  | "save"
   | null;
 const go = (path: string) => {
   location.hash = path;
+};
+const errorText = (e: unknown) =>
+  e instanceof api.ApiError ? e.message : "요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.";
+/** 서버 결과물 → 화면의 Plan 형식 */
+function toPlan(r: api.Result): Plan {
+  return {
+    id: String(r.resultId),
+    resultId: r.resultId,
+    title: r.title,
+    category: r.categoryName as Category,
+    words: r.words,
+    summary: r.ideaSummary,
+    sections: r.items.map((i) => ({ title: i.label, body: i.content })),
+    keys: r.items.map((i) => i.key),
+    created: r.createdAt,
+    saved: r.saved,
+    loginPrompt: r.loginPrompt,
+    canDelete: r.canDelete,
+    author: r.authorName,
+    aiMode: r.aiMode,
+  };
+}
+type IdeaView = {
+  ideaId?: number;
+  title: string;
+  summary: string;
+  status: "GENERATING" | "SUCCESS" | "FAILED";
+  failure?: string | null;
+  words: string[];
+  aiMode?: string;
 };
 const dateLabel = (s: string, short = false) => {
   const d = new Date(s);
@@ -61,7 +94,7 @@ function Experience({ route }: { route: string }) {
       ? !["01", "02", "03", "04", "20", "25", "26"].includes(preview)
         ? "김방장"
         : null
-      : readLocal("user", null),
+      : api.signedInName(),
   );
   const [session, setSession] = useState<Session>(() =>
     preview ? startForPreview(preview) : readLocal("session", initialSession()),
@@ -110,6 +143,13 @@ function Experience({ route }: { route: string }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [returnAfterLogin, setReturnAfterLogin] = useState(false);
+  const [catIds, setCatIds] = useState<Record<string, number>>({});
+  const [idea, setIdea] = useState<IdeaView | null>(null);
+  const [serverResult, setServerResult] = useState<Plan | null>(null);
+  const [resultLoading, setResultLoading] = useState(false);
+  const [historyItems, setHistoryItems] = useState<api.HistoryItem[] | null>(null);
+  const [working, setWorking] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
   const page = preview
     ? ["01", "02", "03", "04", "05", "20"].includes(preview)
       ? "home"
@@ -142,7 +182,9 @@ function Experience({ route }: { route: string }) {
             "1주차 재료 비율 테스트 → 2주차 굽는 시간 조정 → 3주차 시식 피드백 반영",
         }
       : draft
-    : plans.find((p) => p.id === resultId);
+    : serverResult && serverResult.id === resultId
+      ? serverResult
+      : undefined;
   const notify = (message: string) => {
     setToast(message);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -196,43 +238,166 @@ function Experience({ route }: { route: string }) {
   useEffect(() => {
     if (page === "result" && result) setDraft(result);
   }, [page, resultId]);
-  function newSession() {
-    updateSession(initialSession());
-    go("/session");
-    setOverlay(null);
+  useEffect(() => {
+    if (preview) return;
+    const off = api.onAuthChange((u) => setUser(u && !u.guest ? u.name : null));
+    api
+      .categories()
+      .then((cs) => setCatIds(Object.fromEntries(cs.map((c) => [c.name, c.id]))))
+      .catch((e) => notify(errorText(e)));
+    return () => {
+      off();
+    };
+  }, []);
+  // 세션 화면에 왔는데 서버 세션이 없으면(처음·이전 데모 데이터) 새로 만든다. 있으면 참여자·팀 코드를 갱신한다.
+  useEffect(() => {
+    if (preview || page !== "session") return;
+    if (!session.sessionId) {
+      newSession();
+      return;
+    }
+    refreshSession(session.sessionId).catch(() => newSession());
+  }, [page]);
+  useEffect(() => {
+    if (preview || page !== "result" || !resultId) return;
+    setResultLoading(true);
+    api
+      .getResult(Number(resultId))
+      .then((r) => setServerResult(toPlan(r)))
+      .catch((e) => {
+        setServerResult(null);
+        notify(errorText(e));
+      })
+      .finally(() => setResultLoading(false));
+  }, [page, resultId, user]);
+  async function refreshSession(id: number, base: Session = session) {
+    const info = await api.sessionInfo(id);
+    const me = api.currentUser()?.id;
+    updateSession({
+      ...base,
+      sessionId: id,
+      code: info.teamCode ?? "",
+      team: info.members.length > 1,
+      members: info.members.map((m) => ({ name: m.name, role: m.role, joinedAt: m.joinedAt, me: m.userId === me })),
+    });
   }
-  function join(e: FormEvent) {
+  async function newSession() {
+    setOverlay(null);
+    if (preview) {
+      updateSession(initialSession());
+      go("/session");
+      return;
+    }
+    try {
+      const s = await api.createSession("새 발상 세션");
+      const base = { ...initialSession(), code: s.teamCode ?? "", sessionId: s.sessionId };
+      updateSession(base);
+      go("/session");
+      await refreshSession(s.sessionId, base);
+    } catch (e) {
+      notify(errorText(e));
+    }
+  }
+  async function join(e: FormEvent) {
     e.preventDefault();
     if (!/^[A-Z0-9]{6}$/.test(code)) {
       setCodeError("영문과 숫자로 된 6자리 코드를 입력해 주세요.");
       return;
     }
     setCodeError("");
-    updateSession({ ...initialSession(), team: true, code });
-    go("/session");
-    notify("김방장님의 세션에 입장했어요. (팀 참여 데모)");
+    if (!user) {
+      setSaveMessage("팀 코드로 함께 작업하려면 먼저 로그인해 주세요.");
+      setOverlay("save");
+      return;
+    }
+    try {
+      const j = await api.joinSession(code);
+      const base = { ...initialSession(), sessionId: j.sessionId };
+      updateSession(base);
+      await refreshSession(j.sessionId, base);
+      go("/session");
+      notify(`'${j.name}' 세션에 입장했어요.`);
+    } catch (err) {
+      setCodeError(errorText(err));
+    }
   }
   function changeCategory(category: Category) {
     updateSession({
       ...session,
       category,
+      categoryId: catIds[category],
       words: [],
+      drawId: undefined,
+      drawWords: undefined,
       expanded: false,
       reroll: 0,
     });
   }
-  function generate() {
-    if (session.words.length !== 3 || !session.category) return;
-    setDraft(makePlan(session.category, session.words));
-    setOverlay("loading");
-    timer.current = setTimeout(() => setOverlay("idea"), 1400);
+  async function reroll() {
+    if (!session.sessionId || !session.categoryId) return;
+    try {
+      const d = await api.draw(session.sessionId, session.categoryId);
+      updateSession({ ...session, words: d.words, drawId: d.drawId, drawWords: d.words, reroll: session.reroll + 1 });
+      notify("트리에서 단어 3개를 새로 뽑았어요.");
+    } catch (e) {
+      notify(errorText(e));
+    }
   }
-  function createResult() {
-    const p = { ...draft, id: crypto.randomUUID() };
-    updatePlans([p, ...plans]);
-    setOverlay(null);
-    go("/result/" + p.id);
-    notify("실행안을 이 브라우저의 히스토리에 저장했어요.");
+  async function generate() {
+    if (session.words.length !== 3 || !session.category) return;
+    if (preview || !session.sessionId || !session.categoryId) {
+      setDraft(makePlan(session.category, session.words));
+      setOverlay("loading");
+      timer.current = setTimeout(() => setOverlay("idea"), 1400);
+      return;
+    }
+    const words = session.words;
+    setIdea({ title: "", summary: "", status: "GENERATING", words });
+    setOverlay("loading");
+    try {
+      // 고정한 3개로 새 추출을 만들고(같은 조합이면 기존 추출 재사용) 아이디어를 생성한다.
+      const same = session.drawId && session.drawWords && session.drawWords.join() === words.join();
+      const drawId = same ? session.drawId! : (await api.draw(session.sessionId, session.categoryId, words)).drawId;
+      if (!same) updateSession({ ...session, drawId, drawWords: words });
+      const r = await api.generateIdea(drawId);
+      setIdea({
+        ideaId: r.ideaId,
+        title: r.title ?? "",
+        summary: r.summary ?? "",
+        status: r.status,
+        failure: r.failureReason,
+        words: r.words,
+        aiMode: r.aiMode,
+      });
+      if (r.status === "SUCCESS") updateSession({ ...session, drawId: undefined, drawWords: undefined });
+    } catch (e) {
+      setIdea({ title: "", summary: "", status: "FAILED", failure: errorText(e), words });
+    }
+    setOverlay("idea");
+  }
+  async function createResult() {
+    if (preview || !idea?.ideaId) {
+      const p = { ...draft, id: crypto.randomUUID() };
+      updatePlans([p, ...plans]);
+      setOverlay(null);
+      go("/result/" + p.id);
+      return;
+    }
+    setWorking(true);
+    try {
+      const r = await api.createResult(idea.ideaId);
+      const p = toPlan(r);
+      setServerResult(p);
+      go("/result/" + p.id);
+      if (!p.saved) {
+        setSaveMessage(p.loginPrompt || "히스토리로 남기고 싶다면 로그인해 주세요. 나가면 저장되지 않습니다.");
+        setTimeout(() => setOverlay("save"), 0);
+      } else notify("실행안을 만들어 히스토리에 저장했어요.");
+    } catch (e) {
+      notify(errorText(e));
+    } finally {
+      setWorking(false);
+    }
   }
   async function copy(text: string, message = "복사했어요.") {
     try {
@@ -244,8 +409,17 @@ function Experience({ route }: { route: string }) {
   }
   const planText = (p: Plan, md = false) =>
     `${md ? "# " : ""}${p.title}\n\n${p.summary}\n\n사용한 단어: ${p.words.join(" · ")}\n\n${p.sections.map((s) => `${md ? "## " : ""}${s.title}\n${s.body}`).join("\n\n")}${p.refined ? "\n\n보완 내용\n" + p.refined : ""}`;
-  function exportPlan(format: string) {
+  async function exportPlan(format: string) {
     if (!result) return;
+    if (result.resultId && !preview) {
+      try {
+        await api.exportResult(result.resultId, format.toLowerCase() as "pdf" | "txt" | "md", result.title);
+        notify(format + " 파일로 내보냈어요.");
+      } catch (e) {
+        notify(errorText(e));
+      }
+      return;
+    }
     if (format === "PDF") {
       window.print();
       return;
@@ -270,6 +444,18 @@ function Experience({ route }: { route: string }) {
       return;
     }
     const next = { ...edit, title: edit.title.trim() };
+    if (!preview && result?.resultId && result.keys) {
+      const items = Object.fromEntries(result.keys.map((k, i) => [k, edit.sections[i].body]));
+      api
+        .updateResult(result.resultId, items)
+        .then((r) => {
+          setServerResult(toPlan(r));
+          setMode("view");
+          notify("변경 사항을 저장했어요.");
+        })
+        .catch((e) => notify(errorText(e)));
+      return;
+    }
     if (preview) setDraft(next);
     else updatePlans(plans.map((p) => (p.id === next.id ? next : p)));
     setMode("view");
@@ -278,6 +464,19 @@ function Experience({ route }: { route: string }) {
   function refine() {
     if (!result) return;
     setRefining(true);
+    if (!preview && result.resultId) {
+      api
+        .regenerate(result.resultId, request.trim())
+        .then((r) => {
+          setServerResult(toPlan(r));
+          setMode("view");
+          setRequest("");
+          notify(r.notice || "AI가 실행안을 보완했어요.");
+        })
+        .catch((e) => notify(errorText(e)))
+        .finally(() => setRefining(false));
+      return;
+    }
     timer.current = setTimeout(() => {
       const text = request.trim()
         ? `요청: ${request.trim()}\n1주차 목표와 준비 항목 정리 → 2주차 시제품 테스트 → 3주차 피드백 수집과 개선`
@@ -296,6 +495,20 @@ function Experience({ route }: { route: string }) {
       setOverlay("login");
     } else setOverlay("history");
   };
+  useEffect(() => {
+    if (preview || overlay !== "history") return;
+    setHistoryItems(null);
+    const t = setTimeout(() => {
+      api
+        .history(search.trim(), filter === "전체" ? null : catIds[filter] ?? null)
+        .then((h) => setHistoryItems(h.items))
+        .catch((e) => {
+          setHistoryItems([]);
+          notify(errorText(e));
+        });
+    }, 250);
+    return () => clearTimeout(t);
+  }, [overlay, search, filter]);
   const historyResults = plans.filter(
     (p) =>
       (filter === "전체" || p.category === filter) &&
@@ -324,8 +537,10 @@ function Experience({ route }: { route: string }) {
                 variant="ghost"
                 className="desktop-only"
                 onClick={() => {
+                  api.logout();
                   setUser(null);
-                  writeLocal("user", null);
+                  updateSession(initialSession());
+                  go("/");
                   notify("로그아웃했어요.");
                 }}
               >
@@ -360,12 +575,14 @@ function Experience({ route }: { route: string }) {
         {menu && (
           <div className="more-menu">
             <strong>{shownUser || "게스트"}</strong>
-            <p>프론트엔드 데모</p>
+            <p>{user ? "로그인됨" : "로그인 없이 사용 중"}</p>
             <button
               onClick={() => {
                 if (user) {
+                  api.logout();
                   setUser(null);
-                  writeLocal("user", null);
+                  updateSession(initialSession());
+                  go("/");
                 } else setOverlay("login");
                 setMenu(false);
               }}
@@ -495,10 +712,16 @@ function Experience({ route }: { route: string }) {
             <div className="session-meta">
               <button
                 className="team-code"
-                onClick={() => copy(session.code, "팀 코드를 복사했어요.")}
+                onClick={() => {
+                  if (session.code) copy(session.code, "팀 코드를 복사했어요.");
+                  else {
+                    setSaveMessage("팀 코드로 함께 작업하려면 로그인해 주세요. 로그인하면 지금 세션의 팀 코드가 생겨요.");
+                    setOverlay("save");
+                  }
+                }}
               >
                 <span className="desktop-only muted">팀 코드</span>
-                <span className="mono">{session.code}</span>
+                <span className="mono">{session.code || "로그인 필요"}</span>
                 <Icon name="copy" />
               </button>
               <button
@@ -508,9 +731,11 @@ function Experience({ route }: { route: string }) {
               >
                 <Icon name="users" />
                 <span className="desktop-only">
-                  김방장 (방장){session.team ? " · 이팀원" : ""}
+                  {session.members
+                    ? session.members.map((m) => `${m.name}${m.role === "OWNER" ? " (방장)" : ""}`).join(" · ")
+                    : `김방장 (방장)${session.team ? " · 이팀원" : ""}`}
                 </span>
-                <span className="mobile-only">{session.team ? 2 : 1}</span>
+                <span className="mobile-only">{session.members ? session.members.length : session.team ? 2 : 1}</span>
                 <Icon name="down" />
               </button>
             </div>
@@ -535,12 +760,16 @@ function Experience({ route }: { route: string }) {
                 : "분야를 고르면 아래 캔버스에 단어 트리가 펼쳐져요."}
             </p>
           </div>
-          <TreeCanvas
-            previewLoading={preview === "08"}
-            session={session}
-            update={updateSession}
-            notify={notify}
-          />
+          {preview ? (
+            <TreeCanvasPreview
+              previewLoading={preview === "08"}
+              session={session}
+              update={updateSession}
+              notify={notify}
+            />
+          ) : (
+            <TreeCanvas session={session} update={updateSession} notify={notify} />
+          )}
           <section className="combo-dock" aria-label="이번 조합">
             <div className="sheet-handle" />
             <div className="combo-head">
@@ -586,6 +815,10 @@ function Experience({ route }: { route: string }) {
                   className="large"
                   disabled={!session.category}
                   onClick={() => {
+                    if (!preview) {
+                      reroll();
+                      return;
+                    }
                     updateSession({
                       ...session,
                       words: [],
@@ -724,8 +957,12 @@ function Experience({ route }: { route: string }) {
                     <Button
                       onClick={() => {
                         updateSession({
-                          ...initialSession(),
+                          ...session,
                           category: result.category,
+                          categoryId: catIds[result.category],
+                          words: [],
+                          drawId: undefined,
+                          drawWords: undefined,
                         });
                         go("/session");
                       }}
@@ -776,6 +1013,7 @@ function Experience({ route }: { route: string }) {
                         {f}
                       </button>
                     ))}
+                    {(preview || result.canDelete !== false) && (
                     <button
                       className="delete-button"
                       onClick={() => setOverlay("delete")}
@@ -783,6 +1021,7 @@ function Experience({ route }: { route: string }) {
                       <Icon name="delete" />
                       삭제
                     </button>
+                    )}
                   </div>
                 </>
               ) : mode === "edit" ? (
@@ -820,13 +1059,22 @@ function Experience({ route }: { route: string }) {
             </div>
           </article>
           <p className="result-meta">
-            {shownUser || "게스트"} ·{" "}
-            {new Date(result.created).toLocaleString("ko-KR")} · 이 브라우저에
-            저장된 예시
+            {result.author || shownUser || "게스트"} ·{" "}
+            {new Date(result.created).toLocaleString("ko-KR")} ·{" "}
+            {preview
+              ? "이 브라우저에 저장된 예시"
+              : result.saved
+                ? "히스토리에 저장됨"
+                : "저장되지 않음 · 로그인하면 히스토리에 남아요"}
           </p>
         </main>
       )}
-      {(page === "404" || page === "401" || (page === "result" && !result)) && (
+      {page === "result" && !result && resultLoading && (
+        <main className="error-page">
+          <h1>결과물을 불러오고 있어요</h1>
+        </main>
+      )}
+      {(page === "404" || page === "401" || (page === "result" && !result && !resultLoading)) && (
         <main className="error-page">
           <p className="error-code mono">{page === "401" ? "401" : "404"}</p>
           <h1>{page === "401" ? "로그인이 필요해요" : "없는 화면이에요"}</h1>
@@ -890,13 +1138,14 @@ function Experience({ route }: { route: string }) {
           onType={setOverlay}
           onSuccess={(name) => {
             setUser(name);
-            writeLocal("user", name);
+            if (preview) writeLocal("user", name);
             if (returnAfterLogin) {
               if (page === "401") go("/session");
               setOverlay("history");
               setReturnAfterLogin(false);
             } else setOverlay(null);
-            notify("데모 로그인했어요. 계정 정보는 서버로 전송되지 않아요.");
+            if (!preview && session.sessionId) refreshSession(session.sessionId).catch(() => {});
+            notify(`${name}님, 로그인했어요. 지금까지 만든 결과도 히스토리에 저장됐어요.`);
           }}
           notify={notify}
         />
@@ -909,7 +1158,7 @@ function Experience({ route }: { route: string }) {
           </p>
           <div className="word-chips">
             <span className="desktop-only muted">이번 조합</span>
-            {draft.words.map((w) => (
+            {(idea && !preview ? idea.words : draft.words).map((w) => (
               <span className="chip" key={w}>
                 {w}
               </span>
@@ -920,8 +1169,40 @@ function Experience({ route }: { route: string }) {
               <img className="spinner" src="/assets/b5da8.svg" alt="" />
               <h2>아이디어를 만들고 있어요</h2>
               <p>세 단어의 연결점을 찾는 중이에요.</p>
-              <p className="muted">예시 아이디어를 준비하고 있어요.</p>
+              <p className="muted">
+                {preview ? "예시 아이디어를 준비하고 있어요." : "AI 응답에 길게는 1분 가까이 걸릴 수 있어요."}
+              </p>
             </div>
+          ) : idea && !preview ? (
+            idea.status === "SUCCESS" ? (
+              <>
+                <h1>{idea.title}</h1>
+                <p className="idea-description">{idea.summary}</p>
+                <p className="muted caption">
+                  AI가 만든 초안이에요. 사실 여부와 실현 가능성은 직접 확인해 주세요.
+                  {idea.aiMode === "mock" && " (예시 모드: AI 키가 없어 예시로 만든 결과)"}
+                </p>
+                <div className="idea-actions">
+                  <Button onClick={generate} disabled={working}>
+                    다시 생성
+                  </Button>
+                  <Button variant="primary" onClick={createResult} disabled={working}>
+                    {working ? "실행안 만드는 중…" : "이 아이디어로 실행안 만들기"}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h1>아이디어를 만들지 못했어요</h1>
+                <p className="idea-description">{idea.failure || "잠시 후 다시 시도해 주세요."}</p>
+                <div className="idea-actions">
+                  <Button onClick={closeOverlay}>단어 다시 고르기</Button>
+                  <Button variant="primary" onClick={generate}>
+                    같은 조합으로 다시 시도
+                  </Button>
+                </div>
+              </>
+            )
           ) : (
             <>
               <h1>{draft.title}</h1>
@@ -956,7 +1237,7 @@ function Experience({ route }: { route: string }) {
         >
           <div className="drawer-title">
             <h1>
-              히스토리 <span>{plans.length}</span>
+              히스토리 <span>{preview ? plans.length : historyItems?.length ?? ""}</span>
             </h1>
             <Close onClick={closeOverlay} />
           </div>
@@ -981,6 +1262,39 @@ function Experience({ route }: { route: string }) {
               </button>
             ))}
           </div>
+          {!preview ? (
+            <div className="history-list">
+              {historyItems === null ? (
+                <div className="history-empty">불러오는 중…</div>
+              ) : historyItems.length === 0 ? (
+                <div className="history-empty">
+                  {search || filter !== "전체" ? "검색 결과가 없어요." : "아직 저장된 아이디어가 없어요."}
+                </div>
+              ) : (
+                historyItems.map((h) => (
+                  <button
+                    key={h.type + h.id}
+                    className="history-item"
+                    onClick={() => {
+                      if (!h.resultId) {
+                        notify("보관한 아이디어예요. 실행안을 만들면 결과물로 열 수 있어요.");
+                        return;
+                      }
+                      setOverlay(null);
+                      go("/result/" + h.resultId);
+                    }}
+                  >
+                    <strong>{h.title}</strong>
+                    <span>
+                      {h.categoryName} · {h.teamSession ? "팀" : "개인"} · {h.type === "IDEA" ? "보관 아이디어 · " : ""}
+                      {dateLabel(h.at)}
+                    </span>
+                    <span className="history-words">{h.words.join(" · ")}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : (
           <div className="history-list">
             {historyResults.length === 0 ? (
               <div className="history-empty">검색 결과가 없어요.</div>
@@ -1030,7 +1344,10 @@ function Experience({ route }: { route: string }) {
               })
             )}
           </div>
-          <p className="drawer-footer">이 브라우저에 저장된 히스토리예요.</p>
+          )}
+          <p className="drawer-footer">
+            {preview ? "이 브라우저에 저장된 히스토리예요." : "로그인한 계정에 저장된 히스토리예요."}
+          </p>
         </Modal>
       )}
       {overlay === "members" && (
@@ -1038,8 +1355,44 @@ function Experience({ route }: { route: string }) {
           <Close onClick={closeOverlay} />
           <h2>
             참여자{" "}
-            <span className="muted caption">{session.team ? 2 : 1}명</span>
+            <span className="muted caption">
+              {session.members ? session.members.length : session.team ? 2 : 1}명
+            </span>
           </h2>
+          {session.members && !preview && (
+            <>
+              {session.members.map((m) => (
+                <div className="member-row" key={m.name + m.joinedAt}>
+                  <span className="avatar">{m.name.slice(0, 1)}</span>
+                  <div>
+                    <strong>
+                      {m.name} {m.me && "(나)"}
+                    </strong>
+                    <p>{dateLabel(m.joinedAt)} {m.role === "OWNER" ? "생성" : "입장"}</p>
+                  </div>
+                  <span className={`role-tag ${m.role === "OWNER" ? "" : "guest"}`}>
+                    {m.role === "OWNER" ? "방장" : "팀원"}
+                  </span>
+                </div>
+              ))}
+              <div className="invite-row">
+                <div>
+                  <p>{session.code ? "팀 코드로 팀원을 초대해요" : "로그인하면 팀 코드로 팀원을 초대할 수 있어요"}</p>
+                  <span className="mono">{session.code || "------"}</span>
+                </div>
+                {session.code ? (
+                  <Button onClick={() => copy(session.code, "팀 코드를 복사했어요.")}>
+                    <Icon name="copy" />
+                    코드 복사
+                  </Button>
+                ) : (
+                  <Button onClick={() => setOverlay("login")}>로그인</Button>
+                )}
+              </div>
+            </>
+          )}
+          {(preview || !session.members) && (
+          <>
           <div className="member-row">
             <span className="avatar">김</span>
             <div>
@@ -1083,6 +1436,8 @@ function Experience({ route }: { route: string }) {
               팀원 입장 데모 보기
             </button>
           )}
+          </>
+          )}
         </Modal>
       )}
       {overlay === "delete" && result && (
@@ -1101,14 +1456,36 @@ function Experience({ route }: { route: string }) {
             <Button onClick={closeOverlay}>취소</Button>
             <Button
               variant="dark"
-              onClick={() => {
-                updatePlans(plans.filter((p) => p.id !== result.id));
+              onClick={async () => {
+                if (!preview && result.resultId) {
+                  try {
+                    await api.deleteResult(result.resultId);
+                  } catch (e) {
+                    notify(errorText(e));
+                    return;
+                  }
+                } else updatePlans(plans.filter((p) => p.id !== result.id));
                 setOverlay(null);
                 go("/session");
                 notify("결과물을 삭제했어요.");
               }}
             >
               삭제
+            </Button>
+          </div>
+        </Modal>
+      )}
+      {overlay === "save" && (
+        <Modal label="로그인 안내" onClose={closeOverlay} className="confirm-modal">
+          <h2>로그인하고 저장할까요?</h2>
+          <p>{saveMessage}</p>
+          <div>
+            <Button onClick={closeOverlay}>나중에</Button>
+            <Button variant="dark" onClick={() => setOverlay("login")}>
+              로그인
+            </Button>
+            <Button variant="primary" onClick={() => setOverlay("signup")}>
+              회원가입
             </Button>
           </div>
         </Modal>
@@ -1143,7 +1520,8 @@ function AuthModal({
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
-  function submit(e: FormEvent) {
+  const [pending, setPending] = useState(false);
+  async function submit(e: FormEvent) {
     e.preventDefault();
     setError("");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -1151,10 +1529,13 @@ function AuthModal({
       return;
     }
     if (type === "reset") {
-      setSent(true);
-      notify(
-        "재설정 요청 화면을 확인했어요. 데모에서는 이메일을 보내지 않아요.",
-      );
+      try {
+        await api.passwordReset(email);
+        setSent(true);
+        notify("비밀번호 재설정 요청을 접수했어요.");
+      } catch (err) {
+        setError(errorText(err));
+      }
       return;
     }
     if (password.length < 8) {
@@ -1165,7 +1546,16 @@ function AuthModal({
       setError("이름을 입력해 주세요.");
       return;
     }
-    onSuccess(name.trim() || "김방장");
+    setPending(true);
+    try {
+      if (type === "signup") await api.signup(email, password, name.trim());
+      else await api.login(email, password);
+      onSuccess(api.signedInName() || name.trim());
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setPending(false);
+    }
   }
   const title =
     type === "login"
@@ -1181,7 +1571,7 @@ function AuthModal({
       <p className="auth-description">
         {type === "reset"
           ? "가입한 이메일로 비밀번호 재설정 안내를 보내 드려요."
-          : "로그인하면 만든 아이디어를 히스토리에 저장하고 팀과 함께 볼 수 있어요."}
+          : "로그인하면 만든 아이디어를 히스토리에 저장하고 팀 코드로 함께 작업할 수 있어요."}
       </p>
       <form onSubmit={submit} noValidate>
         <label>
@@ -1235,12 +1625,12 @@ function AuthModal({
         )}
         {sent && (
           <p className="success-note" role="status">
-            재설정 안내 요청을 확인했어요.
+            재설정 안내 요청을 접수했어요.
             <br />
-            데모 모드에서는 실제 이메일이 전송되지 않아요.
+            지금은 메일 발송 기능이 없어 실제 메일은 가지 않아요.
           </p>
         )}
-        <Button variant="primary" className="large full" type="submit">
+        <Button variant="primary" className="large full" type="submit" disabled={pending}>
           {type === "login"
             ? "이메일로 계속하기"
             : type === "signup"
@@ -1281,7 +1671,7 @@ function AuthModal({
         )}
       </div>
       <p className="auth-demo">
-        프론트엔드 데모 · 비밀번호는 저장하거나 전송하지 않아요.
+        로그인하면 지금까지 로그인 없이 만든 결과도 내 히스토리로 옮겨져요.
       </p>
     </Modal>
   );

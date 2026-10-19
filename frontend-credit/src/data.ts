@@ -13,6 +13,14 @@ export type Plan = {
   sections: { title: string; body: string }[];
   created: string;
   refined?: string;
+  /* 서버 결과물과 연결된 경우 */
+  resultId?: number;
+  keys?: string[];
+  saved?: boolean;
+  loginPrompt?: string | null;
+  canDelete?: boolean;
+  author?: string;
+  aiMode?: string;
 };
 export type Session = {
   category: Category | null;
@@ -22,6 +30,12 @@ export type Session = {
   team: boolean;
   code: string;
   created: string;
+  /* 서버 세션과 연결된 경우 */
+  sessionId?: number;
+  categoryId?: number;
+  drawId?: number;
+  drawWords?: string[];
+  members?: { name: string; role: "OWNER" | "MEMBER"; joinedAt: string; me: boolean }[];
 };
 export const initialSession = (): Session => ({
   category: null,
