@@ -103,7 +103,7 @@ cd frontend && npm run build        # 타입 검사 + 빌드
 ### 데이터 덩어리 10개
 User · RefreshToken · Session(`IdeaSession`) · SessionMember · Category · WordNode · ResultTemplate · Draw · Idea · Result.
 처음 실행할 때 `DataSeeder`가 고정 카테고리 3개, 카테고리별 고정 하위 카테고리 3개(트리의 뿌리), 절차 템플릿(결과물 양식)을 넣습니다.
-단어는 미리 넣지 않고 **세션마다 AI가 뻗습니다(뿌리당 최대 20개)**. 하위 카테고리 이름은 `category/Subcategories.java`에 있으며 팀 확정 전 임시 값입니다. 이름을 바꾸면 다음 실행 때 뿌리가 자동으로 새 구성으로 맞춰집니다(세션 단어·기록은 유지).
+단어는 미리 넣지 않고 **세션마다 AI가 뻗습니다(하위 카테고리마다 가지 뻗기 최대 20번, 한 번에 3개)**. 하위 카테고리 이름은 `category/Subcategories.java`에 있으며 팀 확정 전 임시 값입니다. 이름을 바꾸면 다음 실행 때 뿌리가 자동으로 새 구성으로 맞춰집니다(세션 단어·기록은 유지).
 
 ### 비로그인(게스트) 흐름
 1. 화면이 시작할 때 토큰이 없으면 `POST /auth/guest`로 게스트 토큰을 받아 그대로 모든 API에 씁니다.
