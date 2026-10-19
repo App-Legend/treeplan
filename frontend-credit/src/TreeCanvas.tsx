@@ -12,7 +12,7 @@ const GAP = 18; // 옆 가지 사이 간격
 const PAD = 40; // 트리 바깥 여백
 const ROW = { root: 0, branch: 92, firstWord: 236, step: 116 };
 const BOTTOM = { root: 46, branch: 84, word: 64 }; // 노드 위쪽에서 선이 나가는 아래쪽까지
-const MAX_WORDS = 20;
+const MAX_EXPANDS = 20; // 하위 카테고리마다 가지 뻗기 최대 횟수
 const WORDS_PER_EXPAND = 3; // 한 번 뻗을 때 AI가 만드는 단어 수
 
 type LNode = {
@@ -24,7 +24,7 @@ type LNode = {
   x: number;
   y: number;
   children: LNode[];
-  group?: { no: number; wordCount: number; remaining: number };
+  group?: { no: number; expandCount: number; remaining: number };
 };
 
 /** 화면 글꼴 기준 대략적인 글자 폭 (한글 14px, 영문·숫자·공백 더 좁게) */
@@ -194,7 +194,7 @@ export default function TreeCanvas({
         x: 0,
         y: 0,
         children: g.children.map(wordNode),
-        group: { no: gi + 1, wordCount: g.wordCount, remaining: g.remaining },
+        group: { no: gi + 1, expandCount: g.expandCount, remaining: g.remaining },
       })),
     };
     measure(root);
@@ -312,7 +312,7 @@ export default function TreeCanvas({
         </div>
         {session.category && (
           <p className="legend desktop-only">
-            <span className="mono">3 / {MAX_WORDS}</span> = 이 가지에서 뻗은 단어 수 / 최대 {MAX_WORDS}개
+            <span className="mono">3 / {MAX_EXPANDS}</span> = 이 가지에서 뻗은 횟수 / 최대 {MAX_EXPANDS}회 (한 번에 단어 {WORDS_PER_EXPAND}개)
           </p>
         )}
       </div>
@@ -358,7 +358,7 @@ export default function TreeCanvas({
           <h3>위에서 분야를 먼저 골라 주세요</h3>
           <p>
             분야마다 하위 카테고리 3개가 만들어지고,
-            <br />각 가지에서 AI가 단어를 최대 {MAX_WORDS}개까지 뻗어 줘요.
+            <br />가지마다 {MAX_EXPANDS}번까지, 한 번에 단어 {WORDS_PER_EXPAND}개씩 AI가 뻗어 줘요.
           </p>
         </div>
       ) : !layout ? (
@@ -388,7 +388,7 @@ export default function TreeCanvas({
                 <span className="branch-number">{String(n.group!.no).padStart(2, "0")}</span>
                 <strong>{n.text}</strong>
                 <span className="mono">
-                  {n.group!.wordCount} / {MAX_WORDS}
+                  {n.group!.expandCount} / {MAX_EXPANDS}회
                 </span>
                 <button
                   className="fix-toggle"
@@ -396,7 +396,7 @@ export default function TreeCanvas({
                   disabled={busy.has(n.id) || n.group!.remaining === 0}
                   aria-label={`${n.text}에서 가지 뻗기`}
                 >
-                  {busy.has(n.id) ? "뻗는 중…" : n.group!.remaining === 0 ? "가득 참" : "+ 뻗기"}
+                  {busy.has(n.id) ? "뻗는 중…" : n.group!.remaining === 0 ? `${MAX_EXPANDS}회 완료` : "+ 뻗기"}
                 </button>
               </div>
             ) : (

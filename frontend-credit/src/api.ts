@@ -141,9 +141,10 @@ const guestToken = () => (auth?.user.guest ? auth.accessToken : undefined);
 // ---------- 타입 ----------
 export type CategoryDto = { id: number; name: string; slug: string };
 export type WordDto = { id: number; text: string; children: WordDto[] };
-export type WordGroup = { id: number; text: string; wordCount: number; remaining: number; children: WordDto[] };
-export type WordTree = { categoryId: number; name: string; wordCount: number; maxWordsPerRoot: number; groups: WordGroup[] };
-export type Expand = { parentId: number; rootId: number; words: WordDto[]; rootWordCount: number; remaining: number; aiMode: string };
+/** wordCount: 뻗은 단어 수, expandCount: 뻗은 횟수, remaining: 더 뻗을 수 있는 횟수 */
+export type WordGroup = { id: number; text: string; wordCount: number; expandCount: number; remaining: number; children: WordDto[] };
+export type WordTree = { categoryId: number; name: string; wordCount: number; maxExpandsPerRoot: number; groups: WordGroup[] };
+export type Expand = { parentId: number; rootId: number; words: WordDto[]; rootWordCount: number; expandCount: number; remaining: number; aiMode: string };
 export type Member = { userId: number; name: string; role: "OWNER" | "MEMBER"; joinedAt: string };
 export type SessionInfo = {
   sessionId: number;

@@ -21,7 +21,7 @@ POST /auth/guest              → 게스트 토큰
 POST /sessions                → sessionId
 GET  /categories              → 카테고리 3개
 GET  /categories/{id}/words?sessionId=   → 하위 카테고리 3개(뿌리)
-POST /words/{뿌리id}/expand    → AI가 단어 3개 생성 (뿌리마다 최대 20개)
+POST /words/{뿌리id}/expand    → AI가 단어 3개 생성 (뿌리마다 가지 뻗기 최대 20번)
 POST /sessions/{id}/draws      → 단어 3개 확정(직접 고른 3개 또는 무작위)
 POST /draws/{drawId}/idea      → AI 아이디어
 POST /ideas/{ideaId}/result    → AI 실행안 (saved=false면 로그인 권유 팝업)
@@ -48,12 +48,12 @@ POST /auth/signup|login (게스트 토큰을 헤더로) → 게스트 작업이 
 |---|---|---|---|
 | `GET /categories` | 없음 (로그인 불필요) | `[{id, name, slug}]` 3개 | |
 | `GET /categories/{id}/words?sessionId=` | `sessionId` 생략 시 뿌리만 | `WordTree` | sessionId가 있으면 참여자인지 |
-| `POST /words/{nodeId}/expand` | `{sessionId, count?}` (기본 3, 최대 10) | `{parentId, rootId, words:[{id,text,children}], rootWordCount, remaining, aiMode}` | 뿌리당 20개 이하, 같은 뿌리 중복 요청, 이미 나온 단어 제외, 진행 중인 세션 |
+| `POST /words/{nodeId}/expand` | `{sessionId, count?}` (기본 3, 최대 10) | `{parentId, rootId, words:[{id,text,children}], rootWordCount, expandCount, remaining, aiMode}` | 뿌리당 가지 뻗기 20번 이하, 같은 뿌리 중복 요청, 이미 나온 단어 제외, 진행 중인 세션 |
 
 - `nodeId`는 뿌리(하위 카테고리) 또는 단어 ID. 단어에서 뻗으면 그 아래로 깊어진다.
 - 단어 트리는 **세션마다 따로** 자란다. 팀원이 뻗으면 실시간 알림 `TREE_EXPANDED`.
 
-`WordTree` = `{ categoryId, name, wordCount, maxWordsPerRoot: 20, groups: [{ id, text, wordCount, remaining, children: [{ id, text, children: [...] }] }] }`
+`WordTree` = `{ categoryId, name, wordCount, maxExpandsPerRoot: 20, groups: [{ id, text, wordCount, expandCount, remaining, children: [{ id, text, children: [...] }] }] }`
 
 현재 하위 카테고리 (**임시 이름, 팀 확정 필요** → `backend/.../category/Subcategories.java`)
 
@@ -141,7 +141,7 @@ POST /auth/signup|login (게스트 토큰을 헤더로) → 게스트 작업이 
 | `TOO_MANY_ATTEMPTS` | 429 | 로그인 5회 실패, 5분 잠금 |
 | `LOGIN_REQUIRED` | 403 | 게스트가 히스토리·팀 코드 입장 시도 |
 | `NOT_MEMBER` · `NOT_OWNER` | 403 | 세션 참여자·방장 아님 |
-| `ROOT_FULL` | 409 | 하위 카테고리 단어 20개 다 참 |
+| `ROOT_FULL` | 409 | 하위 카테고리에서 가지 뻗기 20번을 다 씀 |
 | `ALREADY_EXPANDING` · `ALREADY_GENERATING` | 409 | 같은 요청이 진행 중 |
 | `TREE_TOO_SMALL` · `POOL_TOO_SMALL` | 422 | 트리 단어가 3개 미만 |
 | `AI_FAILED` | 503 | AI 단어 생성 실패 (재시도 안내) |
