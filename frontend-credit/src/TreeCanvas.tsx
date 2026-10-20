@@ -92,10 +92,13 @@ export default function TreeCanvas({
   session,
   update,
   notify,
+  liveKey = 0,
 }: {
   session: Session;
   update: (s: Session) => void;
   notify: (s: string) => void;
+  /** 팀원이 트리를 바꿨다는 알림이 오면 늘어나는 값. 화면을 비우지 않고 트리만 다시 불러온다 */
+  liveKey?: number;
 }) {
   const mobile = () => matchMedia("(max-width:767px)").matches;
   const [small, setSmall] = useState(mobile);
@@ -193,6 +196,18 @@ export default function TreeCanvas({
       window.removeEventListener("keyup", up);
     };
   }, []);
+  // 팀원 알림: 접힘·이동 상태는 그대로 두고 트리만 조용히 다시 불러온다 (자동 뻗기는 하지 않음)
+  useEffect(() => {
+    if (!liveKey || !sessionId || !categoryId) return;
+    let alive = true;
+    api
+      .wordTree(categoryId, sessionId)
+      .then((t) => alive && setTree(t))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [liveKey]);
   const clamp = (n: number) => Math.min(2, Math.max(0.3, n));
   useEffect(() => {
     const el = area.current;

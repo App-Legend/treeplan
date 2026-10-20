@@ -52,6 +52,8 @@ function setAuth(next: Auth | null) {
 }
 
 export const currentUser = () => auth?.user ?? null;
+/** 실시간 채널 연결용 현재 토큰 */
+export const accessToken = () => auth?.accessToken;
 /** 로그인한(게스트가 아닌) 사용자 이름 */
 export const signedInName = () => (auth && !auth.user.guest ? auth.user.name : null);
 export function onAuthChange(l: (u: UserInfo | null) => void) {

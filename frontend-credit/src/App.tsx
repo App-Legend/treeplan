@@ -4,6 +4,7 @@ import { Button, Close, Icon, Logo, Modal, Numbered } from "./ui";
 import TreeCanvas from "./TreeCanvas";
 import TreeCanvasPreview from "./TreeCanvasPreview";
 import * as api from "./api";
+import { subscribeSession } from "./realtime";
 import {
   categories,
   initialSession,
@@ -151,6 +152,8 @@ function Experience({ route }: { route: string }) {
   const [historyItems, setHistoryItems] = useState<api.HistoryItem[] | null>(null);
   const [working, setWorking] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  /** 팀원 알림이 오면 늘려서 트리를 다시 불러오게 한다 */
+  const [liveKey, setLiveKey] = useState(0);
   /** 트리 초기화할 때 고정한 단어를 남길지 */
   const [keepFixed, setKeepFixed] = useState(true);
   const page = preview
@@ -284,6 +287,47 @@ function Experience({ route }: { route: string }) {
       })
       .finally(() => setResultLoading(false));
   }, [page, resultId, user]);
+  // 실시간 알림: 팀원이 한 일을 새로고침 없이 반영한다 (내가 한 일은 이미 반영돼 있으니 건너뜀)
+  useEffect(() => {
+    if (preview || page !== "session" || !session.sessionId) return;
+    const sid = session.sessionId;
+    return subscribeSession(sid, api.accessToken, (e) => {
+      const me = api.currentUser()?.id;
+      const mine = e.data.byUserId === me || e.data.userId === me || e.data.authorId === me;
+      const name = String(e.data.name ?? e.data.authorName ?? "팀원");
+      switch (e.type) {
+        case "TREE_EXPANDED":
+          if (!mine) setLiveKey((k) => k + 1);
+          break;
+        case "TREE_RESET":
+          if (mine) break;
+          // 팀원이 초기화하면 지워진 단어는 내 고정에서도 뺀다
+          setSession((prev) => {
+            if (prev.categoryId !== e.data.categoryId) return prev;
+            const kept = (e.data.kept as string[] | undefined) ?? [];
+            const next = { ...prev, words: prev.words.filter((w) => kept.includes(w)), drawId: undefined, drawWords: undefined };
+            writeLocal("session", next);
+            return next;
+          });
+          setLiveKey((k) => k + 1);
+          notify("팀원이 트리를 초기화했어요.");
+          break;
+        case "MEMBER_JOINED":
+        case "MEMBER_LEFT":
+          if (!mine) {
+            notify(`${name}님이 ${e.type === "MEMBER_JOINED" ? "입장했어요" : "나갔어요"}.`);
+            refreshSession(sid).catch(() => {});
+          }
+          break;
+        case "RESULT_CREATED":
+          if (!mine) notify(`${name}님이 실행안 '${String(e.data.title ?? "")}'을 만들었어요. 히스토리에서 볼 수 있어요.`);
+          break;
+        case "SESSION_CLOSED":
+          notify("방장이 세션을 종료했어요. 결과는 볼 수 있지만 새로 만들 수는 없어요.");
+          break;
+      }
+    });
+  }, [page, session.sessionId, user]);
   async function refreshSession(id: number, base: Session = session) {
     const info = await api.sessionInfo(id);
     const me = api.currentUser()?.id;
@@ -803,7 +847,7 @@ function Experience({ route }: { route: string }) {
               notify={notify}
             />
           ) : (
-            <TreeCanvas session={session} update={updateSession} notify={notify} />
+            <TreeCanvas session={session} update={updateSession} notify={notify} liveKey={liveKey} />
           )}
           <section className="combo-dock" aria-label="이번 조합">
             <div className="sheet-handle" />
