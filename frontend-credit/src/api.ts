@@ -26,6 +26,19 @@ let auth: Auth | null = (() => {
   }
 })();
 const listeners = new Set<(u: UserInfo | null) => void>();
+function readStoredAuth(): Auth | null {
+  try {
+    return JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+// 다른 탭에서 로그인·갱신·로그아웃하면 이 탭도 따라간다
+addEventListener("storage", (e) => {
+  if (e.key !== AUTH_KEY) return;
+  auth = readStoredAuth();
+  listeners.forEach((l) => l(auth?.user ?? null));
+});
 
 function setAuth(next: Auth | null) {
   auth = next;
@@ -97,6 +110,12 @@ function safeJson(t: string) {
 let refreshing: Promise<boolean> | null = null;
 async function refresh(): Promise<boolean> {
   if (!auth) return false;
+  // 다른 탭이 먼저 갱신했다면(갱신 토큰은 한 번만 쓸 수 있음) 저장소의 새 토큰을 그대로 쓴다
+  const stored = readStoredAuth();
+  if (stored && stored.accessToken !== auth.accessToken) {
+    auth = stored;
+    return true;
+  }
   refreshing ??= raw("POST", "/auth/refresh", { refreshToken: auth.refreshToken })
     .then((r) => {
       setAuth(r as Auth);
@@ -211,8 +230,12 @@ export type HistoryItem = {
 export const categories = () => call<CategoryDto[]>("GET", "/categories");
 export const wordTree = (categoryId: number, sessionId: number) =>
   call<WordTree>("GET", `/categories/${categoryId}/words?sessionId=${sessionId}`);
-export const resetTree = (sessionId: number, categoryId: number) =>
-  call<{ categoryId: number; deleted: number }>("DELETE", `/sessions/${sessionId}/categories/${categoryId}/words`);
+/** keep: 남길 단어(고정한 단어). 주면 그 단어는 하위 카테고리 바로 아래로 올라가고 나머지만 지워진다 */
+export const resetTree = (sessionId: number, categoryId: number, keep: string[] = []) =>
+  call<{ categoryId: number; deleted: number; kept: string[] }>(
+    "DELETE",
+    `/sessions/${sessionId}/categories/${categoryId}/words${keep.length ? "?" + keep.map((w) => "keep=" + encodeURIComponent(w)).join("&") : ""}`,
+  );
 export const expand = (nodeId: number, sessionId: number, count = 3) =>
   call<Expand>("POST", `/words/${nodeId}/expand`, { sessionId, count });
 

@@ -25,7 +25,7 @@ type Overlay =
   | "members"
   | "delete"
   | "save"
-  | "reset"
+  | "treeReset"
   | null;
 const go = (path: string) => {
   location.hash = path;
@@ -151,6 +151,8 @@ function Experience({ route }: { route: string }) {
   const [historyItems, setHistoryItems] = useState<api.HistoryItem[] | null>(null);
   const [working, setWorking] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  /** 트리 초기화할 때 고정한 단어를 남길지 */
+  const [keepFixed, setKeepFixed] = useState(true);
   const page = preview
     ? ["01", "02", "03", "04", "05", "20"].includes(preview)
       ? "home"
@@ -264,7 +266,11 @@ function Experience({ route }: { route: string }) {
       newSession();
       return;
     }
-    refreshSession(session.sessionId).catch(() => newSession());
+    refreshSession(session.sessionId).catch(() => {
+      // 이전 세션에 들어갈 수 없으면(로그인 정보가 바뀜 등) 알리고 새로 시작한다
+      notify("이전 세션을 불러오지 못해 새 세션으로 시작했어요.");
+      newSession();
+    });
   }, [page]);
   useEffect(() => {
     if (preview || page !== "result" || !resultId) return;
@@ -353,11 +359,16 @@ function Experience({ route }: { route: string }) {
   async function resetTree() {
     setOverlay(null);
     if (!session.sessionId || !session.categoryId) return;
+    const keep = keepFixed ? session.words : [];
     try {
-      await api.resetTree(session.sessionId, session.categoryId);
-      // reroll 값을 바꾸면 트리 캔버스가 다시 불러오고, 비어 있으니 뿌리 3개에서 자동으로 뻗는다
-      updateSession({ ...session, words: [], drawId: undefined, drawWords: undefined, reroll: session.reroll + 1 });
-      notify("트리를 초기화했어요. 새 단어를 뻗고 있어요.");
+      const r = await api.resetTree(session.sessionId, session.categoryId, keep);
+      // reroll 값을 바꾸면 트리 캔버스가 다시 불러오고, 단어가 없는 하위 카테고리는 자동으로 다시 뻗는다
+      updateSession({ ...session, words: r.kept, drawId: undefined, drawWords: undefined, reroll: session.reroll + 1 });
+      notify(
+        r.kept.length
+          ? `고정한 단어 ${r.kept.length}개를 남기고 나머지를 초기화했어요.`
+          : "트리를 초기화했어요. 새 단어를 뻗고 있어요.",
+      );
     } catch (e) {
       notify(errorText(e));
     }
@@ -850,7 +861,7 @@ function Experience({ route }: { route: string }) {
                   disabled={!session.category}
                   onClick={() => {
                     if (!preview) {
-                      setOverlay("reset");
+                      setOverlay("treeReset");
                       return;
                     }
                     updateSession({
@@ -1509,14 +1520,25 @@ function Experience({ route }: { route: string }) {
           </div>
         </Modal>
       )}
-      {overlay === "reset" && (
+      {overlay === "treeReset" && (
         <Modal label="트리 초기화 확인" onClose={closeOverlay} className="confirm-modal">
           <h2>트리를 초기화할까요?</h2>
           <p>
-            {session.category}에서 뻗은 단어와 고정한 단어가 모두 지워지고,
-            <br />
-            처음처럼 새 단어를 다시 뻗어요.{session.team ? " 팀원의 트리도 함께 초기화돼요." : ""}
+            {keepFixed && session.words.length > 0
+              ? `고정한 단어 ${session.words.length}개(${session.words.join(", ")})는 하위 카테고리 바로 아래로 올리고, 나머지 단어를 지워요.`
+              : `${session.category}에서 뻗은 단어와 고정한 단어가 모두 지워지고, 처음처럼 새 단어를 다시 뻗어요.`}
+            {session.team ? " 팀원의 트리도 함께 초기화돼요." : ""}
           </p>
+          <label className="reset-keep" style={{ opacity: session.words.length ? 1 : 0.5 }}>
+            <input
+              type="checkbox"
+              checked={keepFixed && session.words.length > 0}
+              disabled={session.words.length === 0}
+              onChange={(e) => setKeepFixed(e.target.checked)}
+            />
+            고정한 단어는 남기기
+            {session.words.length === 0 && <small> (고정한 단어가 없어요)</small>}
+          </label>
           <div>
             <Button onClick={closeOverlay}>취소</Button>
             <Button variant="dark" onClick={resetTree}>

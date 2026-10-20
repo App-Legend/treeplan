@@ -25,7 +25,13 @@ type LNode = {
   y: number;
   children: LNode[];
   group?: { no: number; expandCount: number; remaining: number };
+  /** 아래에 단어가 있는지 (접기 버튼 표시용) */
+  hasKids: boolean;
+  /** 접혀 있으면 숨은 단어 수 */
+  hidden: number;
 };
+
+const countAll = (ws: WordDto[]): number => ws.reduce((s, w) => s + 1 + countAll(w.children), 0);
 
 /** 화면 글꼴 기준 대략적인 글자 폭 (한글 14px, 영문·숫자·공백 더 좁게) */
 function textWidth(s: string, size = 14) {
@@ -34,8 +40,23 @@ function textWidth(s: string, size = 14) {
   return w;
 }
 
-function wordNode(d: WordDto): LNode {
-  return { id: d.id, text: d.text, kind: "word", w: Math.max(textWidth(d.text) + 34, 56), span: 0, x: 0, y: 0, children: d.children.map(wordNode) };
+/** 접힌 노드는 자식을 그리지 않고 숨은 단어 수만 기억한다 */
+function wordNode(d: WordDto, collapsed: Set<number>): LNode {
+  const hasKids = d.children.length > 0;
+  const folded = hasKids && collapsed.has(d.id);
+  return {
+    id: d.id,
+    text: d.text,
+    kind: "word",
+    // 아래 줄에 '고정'과 '접기' 버튼이 나란히 들어갈 폭을 확보
+    w: Math.max(textWidth(d.text) + 34, hasKids ? 118 : 56),
+    span: 0,
+    x: 0,
+    y: 0,
+    children: folded ? [] : d.children.map((c) => wordNode(c, collapsed)),
+    hasKids,
+    hidden: folded ? countAll(d.children) : 0,
+  };
 }
 
 function measure(n: LNode): number {
@@ -85,6 +106,14 @@ export default function TreeCanvas({
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const toggleCollapse = (id: number) =>
+    setCollapsed((c) => {
+      const n = new Set(c);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
   const [busy, setBusy] = useState<Set<number>>(new Set());
   const [space, setSpace] = useState(false);
   const area = useRef<HTMLDivElement>(null);
@@ -106,6 +135,7 @@ export default function TreeCanvas({
   // 분야가 바뀌면 트리를 불러오고, 아직 단어가 없으면 뿌리 3개에서 한 번씩 자동으로 뻗는다.
   useEffect(() => {
     setTree(null);
+    setCollapsed(new Set());
     setPan({ x: 0, y: 0 });
     setLoadError("");
     if (!sessionId || !session.category) return;
@@ -124,9 +154,11 @@ export default function TreeCanvas({
         let t = await api.wordTree(categoryId, sessionId);
         if (!alive) return;
         setTree(t);
-        if (t.wordCount === 0) {
-          setBusy(new Set(t.groups.map((g) => g.id)));
-          const results = await Promise.allSettled(t.groups.map((g) => api.expand(g.id, sessionId, WORDS_PER_EXPAND)));
+        // 단어가 하나도 없는 하위 카테고리만 자동으로 뻗는다 (고정 단어를 남긴 초기화 뒤에도 빈 가지는 채움)
+        const empty = t.groups.filter((g) => g.wordCount === 0);
+        if (empty.length > 0) {
+          setBusy(new Set(empty.map((g) => g.id)));
+          const results = await Promise.allSettled(empty.map((g) => api.expand(g.id, sessionId, WORDS_PER_EXPAND)));
           const failed = results.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
           if (failed) notify(messageOf(failed.reason));
           t = await api.wordTree(categoryId, sessionId);
@@ -182,6 +214,8 @@ export default function TreeCanvas({
       text: label,
       kind: "root",
       w: textWidth(label, 18) + 52,
+      hasKids: true,
+      hidden: 0,
       span: 0,
       x: 0,
       y: 0,
@@ -193,7 +227,9 @@ export default function TreeCanvas({
         span: 0,
         x: 0,
         y: 0,
-        children: g.children.map(wordNode),
+        children: collapsed.has(g.id) ? [] : g.children.map((c) => wordNode(c, collapsed)),
+        hasKids: g.children.length > 0,
+        hidden: collapsed.has(g.id) ? countAll(g.children) : 0,
         group: { no: gi + 1, expandCount: g.expandCount, remaining: g.remaining },
       })),
     };
@@ -211,13 +247,19 @@ export default function TreeCanvas({
     const width = root.span + PAD * 2;
     const height = Math.max(...nodes.map((n) => n.y)) + 140;
     return { nodes, edges, width, height };
-  }, [tree, session.category]);
+  }, [tree, session.category, collapsed]);
 
   async function expand(nodeId: number, label: string) {
     if (!sessionId || !categoryId || busy.has(nodeId)) return;
     setBusy((b) => new Set(b).add(nodeId));
     try {
       await api.expand(nodeId, sessionId, WORDS_PER_EXPAND);
+      setCollapsed((c) => {
+        if (!c.has(nodeId)) return c;
+        const n = new Set(c);
+        n.delete(nodeId);
+        return n;
+      });
       setTree(await api.wordTree(categoryId, sessionId));
     } catch (e) {
       notify(messageOf(e, `'${label}'에서 가지를 뻗지 못했어요.`));
@@ -325,6 +367,11 @@ export default function TreeCanvas({
             <>
               <span className="desktop-only muted">{session.category} · 하위 카테고리 3개</span>
               <span className="mobile-only muted mono">{Math.round(zoom * 100)}%</span>
+              {collapsed.size > 0 && (
+                <button className="fix-toggle" onClick={() => setCollapsed(new Set())} onPointerDown={(e) => e.stopPropagation()}>
+                  모두 펼치기
+                </button>
+              )}
             </>
           )}
         </div>
@@ -408,14 +455,17 @@ export default function TreeCanvas({
                 <span className="mono">
                   {n.group!.expandCount} / {MAX_EXPANDS}회
                 </span>
-                <button
-                  className="fix-toggle"
-                  onClick={() => expand(n.id, n.text)}
-                  disabled={busy.has(n.id) || n.group!.remaining === 0}
-                  aria-label={`${n.text}에서 가지 뻗기`}
-                >
-                  {busy.has(n.id) ? "뻗는 중…" : n.group!.remaining === 0 ? `${MAX_EXPANDS}회 완료` : "+ 뻗기"}
-                </button>
+                <div className="node-actions">
+                  <button
+                    className="fix-toggle"
+                    onClick={() => expand(n.id, n.text)}
+                    disabled={busy.has(n.id) || n.group!.remaining === 0}
+                    aria-label={`${n.text}에서 가지 뻗기`}
+                  >
+                    {busy.has(n.id) ? "뻗는 중…" : n.group!.remaining === 0 ? `${MAX_EXPANDS}회 완료` : "+ 뻗기"}
+                  </button>
+                  {n.hasKids && <FoldButton node={n} onToggle={toggleCollapse} />}
+                </div>
               </div>
             ) : (
               <div
@@ -431,14 +481,17 @@ export default function TreeCanvas({
                 >
                   {busy.has(n.id) ? "뻗는 중…" : n.text}
                 </button>
-                <button
-                  className="fix-toggle"
-                  onClick={() => toggle(n.text)}
-                  aria-label={`${n.text} ${session.words.includes(n.text) ? "고정 해제" : "고정"}`}
-                  aria-pressed={session.words.includes(n.text)}
-                >
-                  {session.words.includes(n.text) ? "해제" : "고정"}
-                </button>
+                <div className="node-actions">
+                  <button
+                    className="fix-toggle"
+                    onClick={() => toggle(n.text)}
+                    aria-label={`${n.text} ${session.words.includes(n.text) ? "고정 해제" : "고정"}`}
+                    aria-pressed={session.words.includes(n.text)}
+                  >
+                    {session.words.includes(n.text) ? "해제" : "고정"}
+                  </button>
+                  {n.hasKids && <FoldButton node={n} onToggle={toggleCollapse} />}
+                </div>
               </div>
             ),
           )}
@@ -451,6 +504,21 @@ export default function TreeCanvas({
       )}
       <p className="canvas-hint desktop-only">Space + 드래그 또는 손바닥 도구로 이동 · Ctrl + 휠로 확대/축소</p>
     </div>
+  );
+}
+
+/** 접기/펼치기 버튼. 접혀 있으면 숨은 단어 수를 보여 준다 */
+function FoldButton({ node, onToggle }: { node: LNode; onToggle: (id: number) => void }) {
+  const folded = node.hidden > 0;
+  return (
+    <button
+      className={`fix-toggle fold-toggle ${folded ? "folded" : ""}`}
+      onClick={() => onToggle(node.id)}
+      aria-expanded={!folded}
+      aria-label={`${node.text} 아래 가지 ${folded ? "펼치기" : "접기"}`}
+    >
+      {folded ? `펼치기 +${node.hidden}` : "접기"}
+    </button>
   );
 }
 

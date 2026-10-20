@@ -2507,3 +2507,12 @@ button:not(:disabled):hover {
     padding: 4px 12px 5px;
   }
 }
+
+/* 트리 노드 접기/펼치기 */
+.node-actions { display: flex; gap: 4px; align-items: center; justify-content: center; }
+.fold-toggle.folded { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* 트리 초기화: 고정 단어 남기기 옵션 */
+.reset-keep { display: flex; align-items: center; gap: 8px; justify-content: center; margin: 4px 0 14px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.reset-keep input { width: 18px; height: 18px; accent-color: var(--accent); }
+.reset-keep small { font-weight: 400; color: var(--secondary); }
