@@ -140,7 +140,7 @@ erDiagram
 | `session_members` | 세션 참여자 | (session_id, user_id) 고유. 역할 OWNER/MEMBER |
 | `categories` | 고정 카테고리 3개 | slug: food · program · contest |
 | `result_templates` | 분야별 결과물 양식 + AI 지시문 | `items_json` = [{key, label, description}] |
-| `word_nodes` | 단어 트리 | 깊이 1 = 하위 카테고리(공용, `session_id` 없음). 깊이 2+ = AI 단어(세션별, `root_id`로 뿌리 표시). 가지 뻗기는 뿌리당 20번까지, 단어마다 `expand_no`(몇 번째 뻗기)를 저장해 서버가 셈 |
+| `word_nodes` | 단어 트리 | 깊이 1 = 하위 카테고리(공용, `session_id` 없음). 깊이 2+ = AI 단어(세션별, `root_id`로 뿌리 표시). 가지 뻗기는 뿌리당 10번까지, 단어마다 `expand_no`(몇 번째 뻗기)를 저장해 서버가 셈 |
 | `draws` | 단어 3개 추출 기록 | 단어 목록은 쉼표로 이은 문자열 |
 | `ideas` | AI 아이디어 | 추출 1 : 아이디어 1 (`draw_id` 고유). 생성 상태 GENERATING/SUCCESS/FAILED |
 | `results` | AI 실행안 | 아이디어 1 : 결과물 0..1 (`idea_id` 고유). 본문은 `body_json`({key: 내용}). 삭제는 `deleted=true`(소프트 삭제). 조회를 빠르게 하려고 단어·카테고리명·제목을 복사해 둠 |
@@ -167,7 +167,7 @@ erDiagram
 | 테이블 | 추가 컬럼 | 설명 |
 |---|---|---|
 | `categories` | `owner_id` (null = 기본 카테고리), `session_id` (null = 개인) | 사용자가 만든 카테고리. 결과물 양식은 기본 양식 하나를 같이 쓰거나 새로 만든다(팀 결정 필요) |
-| `word_nodes` | (`source`에 `USER` 값 추가) | 사용자가 직접 넣은 하위 카테고리·단어. 뿌리당 가지 뻗기 20번 규칙은 그대로 |
+| `word_nodes` | (`source`에 `USER` 값 추가) | 사용자가 직접 넣은 하위 카테고리·단어. 뿌리당 가지 뻗기 10번 규칙은 그대로 |
 
 ### 11주차: 단어별 연결 이유·개선 질문
 `result_templates.items_json`에 항목(`word_links`, `questions`)만 추가하면 된다. **스키마 변경 없음.**

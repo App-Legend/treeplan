@@ -12,7 +12,7 @@ const GAP = 18; // 옆 가지 사이 간격
 const PAD = 40; // 트리 바깥 여백
 const ROW = { root: 0, branch: 92, firstWord: 262, step: 116 };
 const BOTTOM = { root: 46, branch: 116, word: 64 }; // 노드 위쪽에서 선이 나가는 아래쪽까지 (가지는 '+ 뻗기' 버튼 포함)
-const MAX_EXPANDS = 20; // 하위 카테고리마다 가지 뻗기 최대 횟수
+const MAX_EXPANDS = 10; // 하위 카테고리마다 가지 뻗기 최대 횟수
 const WORDS_PER_EXPAND = 3; // 한 번 뻗을 때 AI가 만드는 단어 수
 
 type LNode = {
