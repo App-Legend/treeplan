@@ -281,12 +281,18 @@ function Experience({ route }: { route: string }) {
   async function refreshSession(id: number, base: Session = session) {
     const info = await api.sessionInfo(id);
     const me = api.currentUser()?.id;
-    updateSession({
-      ...base,
-      sessionId: id,
-      code: info.teamCode ?? "",
-      team: info.members.length > 1,
-      members: info.members.map((m) => ({ name: m.name, role: m.role, joinedAt: m.joinedAt, me: m.userId === me })),
+    // 응답을 기다리는 사이 사용자가 분야를 고르거나 단어를 고정했을 수 있으므로,
+    // 같은 세션이면 그 순간의 최신 상태에 팀 정보만 합친다 (늦게 온 응답이 덮어쓰지 않게)
+    setSession((prev) => {
+      const next: Session = {
+        ...(prev.sessionId === id ? prev : base),
+        sessionId: id,
+        code: info.teamCode ?? "",
+        team: info.members.length > 1,
+        members: info.members.map((m) => ({ name: m.name, role: m.role, joinedAt: m.joinedAt, me: m.userId === me })),
+      };
+      if (!preview) writeLocal("session", next);
+      return next;
     });
   }
   async function newSession() {

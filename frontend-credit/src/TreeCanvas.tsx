@@ -10,8 +10,8 @@ import { Icon, Numbered } from "./ui";
 
 const GAP = 18; // 옆 가지 사이 간격
 const PAD = 40; // 트리 바깥 여백
-const ROW = { root: 0, branch: 92, firstWord: 236, step: 116 };
-const BOTTOM = { root: 46, branch: 84, word: 64 }; // 노드 위쪽에서 선이 나가는 아래쪽까지
+const ROW = { root: 0, branch: 92, firstWord: 262, step: 116 };
+const BOTTOM = { root: 46, branch: 116, word: 64 }; // 노드 위쪽에서 선이 나가는 아래쪽까지 (가지는 '+ 뻗기' 버튼 포함)
 const MAX_EXPANDS = 20; // 하위 카테고리마다 가지 뻗기 최대 횟수
 const WORDS_PER_EXPAND = 3; // 한 번 뻗을 때 AI가 만드는 단어 수
 
@@ -269,10 +269,28 @@ export default function TreeCanvas({
     const p = [...pointers.current.values()][0];
     if (p) gesture.current = { ...gesture.current, x: p.x, y: p.y, px: pan.x, py: pan.y };
   }
+  // 휴대폰: 글씨를 읽을 수 있는 배율(최소 45%)을 지키면서 화면 폭에 최대한 맞추고, 트리를 가운데 둔다
   const reset = () => {
-    setZoom(small ? 0.62 : 1);
-    setPan({ x: 0, y: 0 });
+    if (!small || !layout || !area.current) {
+      setZoom(small ? 0.62 : 1);
+      setPan({ x: 0, y: 0 });
+      return;
+    }
+    const w = area.current.clientWidth;
+    const z = clamp(Math.max(0.45, Math.min(0.62, (w - 40) / layout.width)));
+    setZoom(z);
+    // 모바일 트리는 왼쪽 20px에서 시작하므로, 가운데 오도록 그만큼 옮긴다
+    setPan({ x: (w - layout.width * z) / 2 - 20, y: 0 });
   };
+  // 분야를 고르거나 초기화한 뒤 처음 트리가 그려질 때 한 번 맞춘다 (뻗을 때마다 흔들리지 않게)
+  const fittedFor = useRef("");
+  useEffect(() => {
+    if (!layout || loading) return;
+    const key = `${categoryId}-${session.reroll}`;
+    if (fittedFor.current === key) return;
+    fittedFor.current = key;
+    if (small) reset();
+  }, [layout, loading, categoryId, session.reroll, small]);
 
   const treeStyle = layout
     ? {
