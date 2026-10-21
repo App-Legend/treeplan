@@ -5,8 +5,7 @@
 
 | 상자 | 기술 | 폴더 |
 |---|---|---|
-| 웹 클라이언트 | React 19 + TypeScript (Vite) — **사용 중** | `frontend-credit/` |
-| (이전 MVP 화면, 보관용) | React 18 + TypeScript (Vite) | `frontend/` |
+| 웹 클라이언트 | React 19 + TypeScript (Vite) | `frontend-credit/` |
 | API 서버 (+ 실시간 채널) | Spring Boot 3.5, Spring Security + JWT, WebSocket/STOMP | `backend/` |
 | 데이터베이스 | PostgreSQL 16 | `docker-compose.yml` |
 | AI 생성 서비스 | Gemini API (키가 없으면 예시 모드) | `backend/.../ai/` |
@@ -79,15 +78,16 @@ cd frontend-credit && npm run build # 타입 검사 + 빌드
 
 ## 2. 문서와 코드의 대응
 
-### 화면 → 코드 (이전 MVP `frontend/` 기준. 사용 중인 `frontend-credit/`는 `src/App.tsx`·`src/TreeCanvas.tsx`·`src/api.ts`)
+### 화면 → 코드 (`frontend-credit/src`)
 | 화면 | 파일 |
 |---|---|
-| 1 시작·팀 입장 | `frontend/src/pages/StartPage.tsx` |
-| 2 카테고리·단어 트리 (+팀 정보·실시간) | `pages/SessionPage.tsx`, `components/WordTreeView.tsx` |
-| 3/4 아이디어 생성 팝업 | `components/IdeaPopup.tsx` |
-| 5 결과물 | `pages/ResultPage.tsx` |
-| 6 로그인 | `components/LoginModal.tsx` |
-| 7 히스토리 사이드바 | `components/HistorySidebar.tsx` |
+| 1 시작·팀 입장 | `App.tsx` |
+| 2 카테고리·단어 트리 (+팀 정보·실시간) | `TreeCanvas.tsx`, `realtime.ts` |
+| 3/4 아이디어 생성 팝업 | `App.tsx` |
+| 5 결과물 | `App.tsx` |
+| 6 로그인 | `App.tsx` |
+| 7 히스토리 사이드바 | `App.tsx` |
+| 서버 호출 | `api.ts` |
 
 ### API 25개 (모두 `/api` 아래)
 | 화면 | 요청 | 컨트롤러 |
