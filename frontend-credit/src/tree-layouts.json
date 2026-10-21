@@ -1,0 +1,1001 @@
+{
+  "initial": {
+    "assets": [
+      {
+        "src": "982ee.svg",
+        "x": 796,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2166"
+      },
+      {
+        "src": "b4057.svg",
+        "x": 723,
+        "y": 219,
+        "width": 76,
+        "height": 38,
+        "node": "27:2165"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 714.5,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2164"
+      },
+      {
+        "src": "92429.svg",
+        "x": 716.5,
+        "y": 219,
+        "width": 7.5,
+        "height": 38,
+        "node": "27:2163"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 639.5,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2162"
+      },
+      {
+        "src": "de2e3.svg",
+        "x": 641.5,
+        "y": 219,
+        "width": 82.5,
+        "height": 38,
+        "node": "27:2161"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 496,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2160"
+      },
+      {
+        "src": "b4057.svg",
+        "x": 423,
+        "y": 219,
+        "width": 76,
+        "height": 38,
+        "node": "27:2159"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 421,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2158"
+      },
+      {
+        "src": "a0d61.svg",
+        "x": 423,
+        "y": 219,
+        "width": 1,
+        "height": 38,
+        "node": "27:2157"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 346,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2156"
+      },
+      {
+        "src": "5bcdc.svg",
+        "x": 348,
+        "y": 219,
+        "width": 76,
+        "height": 38,
+        "node": "27:2155"
+      },
+      {
+        "src": "02030.svg",
+        "x": 423,
+        "y": 193,
+        "width": 1,
+        "height": 26,
+        "node": "27:2154"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 215,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2153"
+      },
+      {
+        "src": "e539e.svg",
+        "x": 123,
+        "y": 219,
+        "width": 95,
+        "height": 38,
+        "node": "27:2152"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 127.5,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2151"
+      },
+      {
+        "src": "80257.svg",
+        "x": 123,
+        "y": 219,
+        "width": 7.5,
+        "height": 38,
+        "node": "27:2150"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 33.5,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2149"
+      },
+      {
+        "src": "98e66.svg",
+        "x": 35.5,
+        "y": 219,
+        "width": 88.5,
+        "height": 38,
+        "node": "27:2148"
+      },
+      {
+        "src": "02030.svg",
+        "x": 123,
+        "y": 193,
+        "width": 1,
+        "height": 26,
+        "node": "27:2147"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 721,
+        "y": 100.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2146"
+      },
+      {
+        "src": "22ac8.svg",
+        "x": 423,
+        "y": 69,
+        "width": 301,
+        "height": 34,
+        "node": "27:2145"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 421,
+        "y": 100.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2144"
+      },
+      {
+        "src": "b0d55.svg",
+        "x": 423,
+        "y": 69,
+        "width": 1,
+        "height": 34,
+        "node": "27:2143"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 121,
+        "y": 100.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2142"
+      },
+      {
+        "src": "55ce2.svg",
+        "x": 123,
+        "y": 69,
+        "width": 301,
+        "height": 34,
+        "node": "27:2141"
+      }
+    ],
+    "words": [
+      {
+        "x": 0,
+        "y": 263,
+        "word": "흑임자",
+        "state": "Default"
+      },
+      {
+        "x": 88,
+        "y": 263,
+        "word": "표고버섯",
+        "state": "Default"
+      },
+      {
+        "x": 188,
+        "y": 263,
+        "word": "버터",
+        "state": "Default"
+      },
+      {
+        "x": 319,
+        "y": 263,
+        "word": "튀김",
+        "state": "Default"
+      },
+      {
+        "x": 394,
+        "y": 263,
+        "word": "발효",
+        "state": "Default"
+      },
+      {
+        "x": 469,
+        "y": 263,
+        "word": "숙성",
+        "state": "Default"
+      },
+      {
+        "x": 612.5,
+        "y": 263,
+        "word": "장마",
+        "state": "Default"
+      },
+      {
+        "x": 687.5,
+        "y": 263,
+        "word": "첫눈",
+        "state": "Default"
+      },
+      {
+        "x": 762.5,
+        "y": 263,
+        "word": "무더위",
+        "state": "Default"
+      }
+    ],
+    "branches": [
+      {
+        "x": 98.5,
+        "y": 109,
+        "label": "재료",
+        "no": "01",
+        "random": false
+      },
+      {
+        "x": 398.5,
+        "y": 109,
+        "label": "조리법",
+        "no": "02",
+        "random": false
+      },
+      {
+        "x": 698.5,
+        "y": 109,
+        "label": "날씨",
+        "no": "03",
+        "random": true
+      }
+    ],
+    "root": {
+      "x": 382,
+      "y": 20
+    }
+  },
+  "expanded": {
+    "assets": [
+      {
+        "src": "3d397.svg",
+        "x": 455.5,
+        "y": 333,
+        "width": 1,
+        "height": 34,
+        "node": "27:2197"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 96.5,
+        "y": 362.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2196"
+      },
+      {
+        "src": "ef8e3.svg",
+        "x": 67,
+        "y": 331,
+        "width": 32.5,
+        "height": 34,
+        "node": "27:2195"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 21,
+        "y": 362.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2194"
+      },
+      {
+        "src": "6fbfc.svg",
+        "x": 23,
+        "y": 331,
+        "width": 45,
+        "height": 34,
+        "node": "27:2193"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 829.5,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2192"
+      },
+      {
+        "src": "b4057.svg",
+        "x": 756.5,
+        "y": 219,
+        "width": 76,
+        "height": 38,
+        "node": "27:2191"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 748,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2190"
+      },
+      {
+        "src": "92429.svg",
+        "x": 750,
+        "y": 219,
+        "width": 7.5,
+        "height": 38,
+        "node": "27:2189"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 673,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2188"
+      },
+      {
+        "src": "de2e3.svg",
+        "x": 675,
+        "y": 219,
+        "width": 82.5,
+        "height": 38,
+        "node": "27:2187"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 529.5,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2186"
+      },
+      {
+        "src": "53f95.svg",
+        "x": 455.5,
+        "y": 219,
+        "width": 77,
+        "height": 38,
+        "node": "27:2185"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 453.5,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2184"
+      },
+      {
+        "src": "a0d61.svg",
+        "x": 455.5,
+        "y": 219,
+        "width": 1,
+        "height": 38,
+        "node": "27:2183"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 377.5,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2182"
+      },
+      {
+        "src": "1eed2.svg",
+        "x": 379.5,
+        "y": 219,
+        "width": 77,
+        "height": 38,
+        "node": "27:2181"
+      },
+      {
+        "src": "02030.svg",
+        "x": 455.5,
+        "y": 193,
+        "width": 1,
+        "height": 26,
+        "node": "27:2180"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 246.5,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2179"
+      },
+      {
+        "src": "e539e.svg",
+        "x": 154.5,
+        "y": 219,
+        "width": 95,
+        "height": 38,
+        "node": "27:2178"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 159,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2177"
+      },
+      {
+        "src": "80257.svg",
+        "x": 154.5,
+        "y": 219,
+        "width": 7.5,
+        "height": 38,
+        "node": "27:2176"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 65,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2175"
+      },
+      {
+        "src": "9418f.svg",
+        "x": 67,
+        "y": 219,
+        "width": 88.5,
+        "height": 38,
+        "node": "27:2174"
+      },
+      {
+        "src": "02030.svg",
+        "x": 154.5,
+        "y": 193,
+        "width": 1,
+        "height": 26,
+        "node": "27:2173"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 754.5,
+        "y": 100.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2172"
+      },
+      {
+        "src": "a1853.svg",
+        "x": 455.5,
+        "y": 69,
+        "width": 302,
+        "height": 34,
+        "node": "27:2171"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 453.5,
+        "y": 100.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2170"
+      },
+      {
+        "src": "b0d55.svg",
+        "x": 455.5,
+        "y": 69,
+        "width": 1,
+        "height": 34,
+        "node": "27:2169"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 152.5,
+        "y": 100.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2168"
+      },
+      {
+        "src": "acd6b.svg",
+        "x": 154.5,
+        "y": 69,
+        "width": 302,
+        "height": 34,
+        "node": "27:2167"
+      },
+      {
+        "src": "02f59.svg",
+        "x": 387,
+        "y": 371,
+        "width": 5,
+        "height": 5,
+        "node": "15:1903"
+      },
+      {
+        "src": "004e7.svg",
+        "x": 387,
+        "y": 371,
+        "width": 5,
+        "height": 5,
+        "node": "15:1903"
+      },
+      {
+        "src": "299b7.svg",
+        "x": 387,
+        "y": 371,
+        "width": 5,
+        "height": 5,
+        "node": "15:1903"
+      }
+    ],
+    "words": [
+      {
+        "x": 31.5,
+        "y": 263,
+        "word": "흑임자",
+        "state": "Default"
+      },
+      {
+        "x": 119.5,
+        "y": 263,
+        "word": "표고버섯",
+        "state": "Default"
+      },
+      {
+        "x": 219.5,
+        "y": 263,
+        "word": "버터",
+        "state": "Default"
+      },
+      {
+        "x": 350.5,
+        "y": 263,
+        "word": "튀김",
+        "state": "Default"
+      },
+      {
+        "x": 502.5,
+        "y": 263,
+        "word": "숙성",
+        "state": "Default"
+      },
+      {
+        "x": 646,
+        "y": 263,
+        "word": "장마",
+        "state": "Default"
+      },
+      {
+        "x": 721,
+        "y": 263,
+        "word": "첫눈",
+        "state": "Default"
+      },
+      {
+        "x": 796,
+        "y": 263,
+        "word": "무더위",
+        "state": "Default"
+      },
+      {
+        "x": 0,
+        "y": 371,
+        "word": "쑥",
+        "state": "Default"
+      },
+      {
+        "x": 63,
+        "y": 371,
+        "word": "고구마",
+        "state": "Default"
+      }
+    ],
+    "branches": [
+      {
+        "x": 130,
+        "y": 109,
+        "label": "재료",
+        "no": "01",
+        "random": false
+      },
+      {
+        "x": 431,
+        "y": 109,
+        "label": "조리법",
+        "no": "02",
+        "random": false
+      },
+      {
+        "x": 732,
+        "y": 109,
+        "label": "날씨",
+        "no": "03",
+        "random": true
+      }
+    ],
+    "root": {
+      "x": 414.5,
+      "y": 20
+    }
+  },
+  "fixed": {
+    "assets": [
+      {
+        "src": "982ee.svg",
+        "x": 829.5,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2223"
+      },
+      {
+        "src": "b4057.svg",
+        "x": 756.5,
+        "y": 219,
+        "width": 76,
+        "height": 38,
+        "node": "27:2222"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 748,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2221"
+      },
+      {
+        "src": "92429.svg",
+        "x": 750,
+        "y": 219,
+        "width": 7.5,
+        "height": 38,
+        "node": "27:2220"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 673,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2219"
+      },
+      {
+        "src": "de2e3.svg",
+        "x": 675,
+        "y": 219,
+        "width": 82.5,
+        "height": 38,
+        "node": "27:2218"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 529,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2217"
+      },
+      {
+        "src": "b4057.svg",
+        "x": 456,
+        "y": 219,
+        "width": 76,
+        "height": 38,
+        "node": "27:2216"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 454,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2215"
+      },
+      {
+        "src": "a0d61.svg",
+        "x": 456,
+        "y": 219,
+        "width": 1,
+        "height": 38,
+        "node": "27:2214"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 379,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2213"
+      },
+      {
+        "src": "5bcdc.svg",
+        "x": 381,
+        "y": 219,
+        "width": 76,
+        "height": 38,
+        "node": "27:2212"
+      },
+      {
+        "src": "02030.svg",
+        "x": 456,
+        "y": 193,
+        "width": 1,
+        "height": 26,
+        "node": "27:2211"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 248,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2210"
+      },
+      {
+        "src": "8a69d.svg",
+        "x": 155.5,
+        "y": 219,
+        "width": 95.5,
+        "height": 38,
+        "node": "27:2209"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 160.5,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2208"
+      },
+      {
+        "src": "c28d1.svg",
+        "x": 155.5,
+        "y": 219,
+        "width": 8,
+        "height": 38,
+        "node": "27:2207"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 754.5,
+        "y": 100.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2203"
+      },
+      {
+        "src": "39c5d.svg",
+        "x": 456,
+        "y": 69,
+        "width": 301.5,
+        "height": 34,
+        "node": "27:2202"
+      },
+      {
+        "src": "982ee.svg",
+        "x": 454,
+        "y": 100.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2201"
+      },
+      {
+        "src": "b0d55.svg",
+        "x": 456,
+        "y": 69,
+        "width": 1,
+        "height": 34,
+        "node": "27:2200"
+      },
+      {
+        "src": "47faa.svg",
+        "x": 98,
+        "y": 361.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2227"
+      },
+      {
+        "src": "45f78.svg",
+        "x": 67.75,
+        "y": 330,
+        "width": 33.5,
+        "height": 34,
+        "node": "27:2226"
+      },
+      {
+        "src": "47faa.svg",
+        "x": 21.5,
+        "y": 361.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2225"
+      },
+      {
+        "src": "bdb9e.svg",
+        "x": 23.25,
+        "y": 330,
+        "width": 46,
+        "height": 34,
+        "node": "27:2224"
+      },
+      {
+        "src": "47faa.svg",
+        "x": 66,
+        "y": 254.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2206"
+      },
+      {
+        "src": "5e077.svg",
+        "x": 67.75,
+        "y": 219,
+        "width": 89,
+        "height": 38,
+        "node": "27:2205"
+      },
+      {
+        "src": "80547.svg",
+        "x": 155.25,
+        "y": 193,
+        "width": 1.5,
+        "height": 26,
+        "node": "27:2204"
+      },
+      {
+        "src": "47faa.svg",
+        "x": 153.5,
+        "y": 100.5,
+        "width": 5,
+        "height": 5,
+        "node": "27:2199"
+      },
+      {
+        "src": "047a7.svg",
+        "x": 155.25,
+        "y": 69,
+        "width": 302,
+        "height": 34,
+        "node": "27:2198"
+      }
+    ],
+    "words": [
+      {
+        "x": 32,
+        "y": 263,
+        "word": "흑임자",
+        "state": "Fixed"
+      },
+      {
+        "x": 121,
+        "y": 263,
+        "word": "표고버섯",
+        "state": "Default"
+      },
+      {
+        "x": 221,
+        "y": 263,
+        "word": "버터",
+        "state": "Default"
+      },
+      {
+        "x": 352,
+        "y": 263,
+        "word": "튀김",
+        "state": "Default"
+      },
+      {
+        "x": 427,
+        "y": 263,
+        "word": "발효",
+        "state": "Default"
+      },
+      {
+        "x": 502,
+        "y": 263,
+        "word": "숙성",
+        "state": "Default"
+      },
+      {
+        "x": 646,
+        "y": 263,
+        "word": "장마",
+        "state": "Default"
+      },
+      {
+        "x": 721,
+        "y": 263,
+        "word": "첫눈",
+        "state": "Default"
+      },
+      {
+        "x": 796,
+        "y": 263,
+        "word": "무더위",
+        "state": "Default"
+      },
+      {
+        "x": 0,
+        "y": 370,
+        "word": "쑥",
+        "state": "Fixed"
+      },
+      {
+        "x": 64,
+        "y": 370,
+        "word": "고구마",
+        "state": "Fixed"
+      }
+    ],
+    "branches": [
+      {
+        "x": 131,
+        "y": 109,
+        "label": "재료",
+        "no": "01",
+        "random": false
+      },
+      {
+        "x": 431.5,
+        "y": 109,
+        "label": "조리법",
+        "no": "02",
+        "random": false
+      },
+      {
+        "x": 732,
+        "y": 109,
+        "label": "날씨",
+        "no": "03",
+        "random": true
+      }
+    ],
+    "root": {
+      "x": 415,
+      "y": 20
+    }
+  }
+}

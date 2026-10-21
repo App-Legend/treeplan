@@ -44,15 +44,49 @@ class CoreFlowTest {
         long sessionId = s1.get("sessionId").asLong();
         String teamCode = s1.get("teamCode").asText();
 
-        // 2. 카테고리와 단어 트리
-        JsonNode cats = json(perform(get("/categories"), token, null, 200));
+        // 2. 카테고리와 단어 트리: 뿌리(고정 하위 카테고리) 3개, 처음에는 단어 없음
+        JsonNode cats = json(perform(get("/categories"), null, null, 200));
         assertThat(cats).hasSize(3);
         long foodId = cats.get(0).get("id").asLong();
         long programId = cats.get(1).get("id").asLong();
-        JsonNode tree = json(perform(get("/categories/" + foodId + "/words"), token, null, 200));
+        JsonNode tree = json(perform(get("/categories/" + foodId + "/words").param("sessionId", String.valueOf(sessionId)), token, null, 200));
+        assertThat(tree.get("groups")).hasSize(3);
+        assertThat(tree.get("wordCount").asInt()).isZero();
+        assertThat(tree.get("maxExpandsPerRoot").asInt()).isEqualTo(10);
+        // 트리가 비어 있으면 뽑기 불가
+        perform(post("/sessions/" + sessionId + "/draws"), token, "{\"categoryIds\":[" + foodId + "]}", 422);
+
+        // AI 가지 뻗기: 하위 카테고리(뿌리)마다 10번까지 (여기서는 한 번에 1개씩 10번)
+        long rootId = tree.get("groups").get(0).get("id").asLong();
+        JsonNode firstExpand = null;
+        for (int i = 0; i < 10; i++) {
+            JsonNode ex = json(perform(post("/words/" + rootId + "/expand"), token,
+                    "{\"sessionId\":" + sessionId + ",\"count\":1}", 200));
+            assertThat(ex.get("words")).hasSize(1);
+            assertThat(ex.get("expandCount").asInt()).isEqualTo(i + 1);
+            if (firstExpand == null) firstExpand = ex;
+        }
+        JsonNode full = json(perform(post("/words/" + rootId + "/expand"), token, "{\"sessionId\":" + sessionId + "}", 409));
+        assertThat(full.get("code").asText()).isEqualTo("ROOT_FULL");
+        // 단어에서 더 뻗기(깊이 3)는 다른 뿌리에서
+        long secondRoot = tree.get("groups").get(1).get("id").asLong();
+        JsonNode ex2 = json(perform(post("/words/" + secondRoot + "/expand"), token, "{\"sessionId\":" + sessionId + ",\"count\":3}", 200));
+        long childWord = ex2.get("words").get(0).get("id").asLong();
+        JsonNode deeper = json(perform(post("/words/" + childWord + "/expand"), token, "{\"sessionId\":" + sessionId + ",\"count\":2}", 200));
+        assertThat(deeper.get("rootId").asLong()).isEqualTo(secondRoot);
+        assertThat(deeper.get("rootWordCount").asInt()).isEqualTo(5);
+        assertThat(deeper.get("expandCount").asInt()).isEqualTo(2);
+        // 다른 세션 참여자가 아니면 트리 조회 불가
+        String stranger = signup("stranger@test.com", "남");
+        perform(get("/categories/" + foodId + "/words").param("sessionId", String.valueOf(sessionId)), stranger, null, 403);
+
+        tree = json(perform(get("/categories/" + foodId + "/words").param("sessionId", String.valueOf(sessionId)), token, null, 200));
+        assertThat(tree.get("groups").get(0).get("wordCount").asInt()).isEqualTo(10);
+        assertThat(tree.get("groups").get(0).get("expandCount").asInt()).isEqualTo(10);
+        assertThat(tree.get("groups").get(0).get("remaining").asInt()).isZero();
         Set<String> foodWords = new HashSet<>();
-        tree.get("groups").forEach(g -> g.get("children").forEach(w -> foodWords.add(w.get("text").asText())));
-        assertThat(foodWords).hasSizeGreaterThan(30);
+        collect(tree.get("groups"), foodWords);
+        assertThat(foodWords).hasSize(15).doesNotHaveDuplicates();
 
         // 3. 단어 추출 반복: 항상 3개, 항상 음식 카테고리 단어만
         JsonNode draw = null;
@@ -140,9 +174,64 @@ class CoreFlowTest {
         perform(post("/sessions/join"), outsider, "{\"teamCode\":\"" + teamCode + "\"}", 409);
     }
 
+    /** 로그인 없이 핵심 흐름 → 결과 저장 안 됨(로그인 권유) → 가입하면 히스토리로 옮겨짐 */
+    @Test
+    void guestFlow() throws Exception {
+        String guest = json(mvc.perform(post("/auth/guest")).andExpect(status().isCreated()).andReturn()).get("accessToken").asText();
+        JsonNode s = json(perform(post("/sessions"), guest, "{\"name\":\"게스트\"}", 201));
+        long sessionId = s.get("sessionId").asLong();
+        assertThat(s.get("teamCode").isNull()).isTrue();
+        long catId = json(perform(get("/categories"), null, null, 200)).get(1).get("id").asLong();
+        JsonNode tree = json(perform(get("/categories/" + catId + "/words").param("sessionId", String.valueOf(sessionId)), guest, null, 200));
+        perform(post("/words/" + tree.get("groups").get(0).get("id").asLong() + "/expand"), guest, "{\"sessionId\":" + sessionId + "}", 200);
+        JsonNode draw = json(perform(post("/sessions/" + sessionId + "/draws"), guest, "{\"categoryIds\":[" + catId + "]}", 201));
+        JsonNode idea = json(perform(post("/draws/" + draw.get("drawId").asLong() + "/idea"), guest, null, 200));
+        JsonNode result = json(perform(post("/ideas/" + idea.get("ideaId").asLong() + "/result"), guest, null, 200));
+        assertThat(result.get("saved").asBoolean()).isFalse();
+        assertThat(result.get("loginPrompt").asText()).contains("로그인");
+        // 게스트는 히스토리·팀 코드 입장 불가
+        assertThat(json(perform(get("/history"), guest, null, 403)).get("code").asText()).isEqualTo("LOGIN_REQUIRED");
+        perform(post("/sessions/join"), guest, "{\"teamCode\":\"ABCDEF\"}", 403);
+
+        // 팝업에서 가입 (게스트 토큰을 함께 보냄) → 결과가 계정 히스토리로
+        MvcResult r = mvc.perform(post("/auth/signup").header("Authorization", "Bearer " + guest)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"saved@test.com\",\"password\":\"abcd1234\",\"name\":\"저장\"}"))
+                .andExpect(status().isCreated()).andReturn();
+        String user = json(r).get("accessToken").asText();
+        assertThat(json(r).get("user").get("guest").asBoolean()).isFalse();
+        JsonNode history = json(perform(get("/history"), user, null, 200));
+        assertThat(history.get("items")).hasSize(1);
+        long resultId = result.get("resultId").asLong();
+        JsonNode reopened = json(perform(get("/results/" + resultId), user, null, 200));
+        assertThat(reopened.get("saved").asBoolean()).isTrue();
+        assertThat(json(perform(get("/sessions/" + sessionId), user, null, 200)).get("teamCode").isNull()).isFalse();
+
+        // 고정 단어를 남기는 초기화: 남긴 단어는 하위 카테고리 바로 아래로, 나머지는 삭제, 뻗기 횟수 0
+        JsonNode before = json(perform(get("/categories/" + catId + "/words").param("sessionId", String.valueOf(sessionId)), user, null, 200));
+        String keepWord = before.get("groups").get(0).get("children").get(0).get("text").asText();
+        JsonNode keepReset = json(perform(delete("/sessions/" + sessionId + "/categories/" + catId + "/words").param("keep", keepWord), user, null, 200));
+        assertThat(keepReset.get("kept")).hasSize(1);
+        JsonNode kept = json(perform(get("/categories/" + catId + "/words").param("sessionId", String.valueOf(sessionId)), user, null, 200));
+        assertThat(kept.get("wordCount").asInt()).isEqualTo(1);
+        assertThat(kept.get("groups").get(0).get("children").get(0).get("text").asText()).isEqualTo(keepWord);
+        assertThat(kept.get("groups").get(0).get("expandCount").asInt()).isZero();
+        // 남긴 단어에서 다시 뻗으면 1번째 뻗기로 센다
+        long keptId = kept.get("groups").get(0).get("children").get(0).get("id").asLong();
+        JsonNode reExpand = json(perform(post("/words/" + keptId + "/expand"), user, "{\"sessionId\":" + sessionId + "}", 200));
+        assertThat(reExpand.get("expandCount").asInt()).isEqualTo(1);
+
+        // 트리 초기화: 뻗은 단어가 모두 지워지고 뻗기 횟수도 0
+        JsonNode reset = json(perform(delete("/sessions/" + sessionId + "/categories/" + catId + "/words"), user, null, 200));
+        assertThat(reset.get("deleted").asInt()).isPositive();
+        JsonNode cleared = json(perform(get("/categories/" + catId + "/words").param("sessionId", String.valueOf(sessionId)), user, null, 200));
+        assertThat(cleared.get("wordCount").asInt()).isZero();
+        assertThat(cleared.get("groups").get(0).get("expandCount").asInt()).isZero();
+    }
+
     @Test
     void authRules() throws Exception {
-        perform(get("/categories"), null, null, 401);
+        perform(get("/history"), null, null, 401);
         signup("a@test.com", "에이");
         // 같은 이메일 중복 가입 거부
         mvc.perform(post("/auth/signup").contentType(MediaType.APPLICATION_JSON)
@@ -165,6 +254,18 @@ class CoreFlowTest {
     }
 
     // ---------- helpers ----------
+
+    /** 뿌리들의 자식 단어를 깊이와 관계없이 모두 모은다 */
+    private static void collect(JsonNode groups, Set<String> out) {
+        groups.forEach(g -> collectWords(g.get("children"), out));
+    }
+
+    private static void collectWords(JsonNode children, Set<String> out) {
+        children.forEach(c -> {
+            out.add(c.get("text").asText());
+            collectWords(c.get("children"), out);
+        });
+    }
 
     private String signup(String email, String name) throws Exception {
         MvcResult r = mvc.perform(post("/auth/signup").contentType(MediaType.APPLICATION_JSON)

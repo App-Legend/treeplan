@@ -6,6 +6,10 @@ server:
 spring:
   application:
     name: seokkeobom-api
+  config:
+    # 프로젝트 최상위 .env(git 제외)의 GEMINI_API_KEY·DB_URL 등을 읽는다. 환경변수로 넣은 값이 있으면 그쪽이 우선한다.
+    # bootRun은 backend/ 폴더에서 실행되므로 ../.env, 최상위에서 실행하면 .env
+    import: "optional:file:../.env[.properties],optional:file:.env[.properties]"
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/seokkeobom}
     username: ${DB_USERNAME:seokkeobom}
@@ -31,9 +35,18 @@ app:
   ai:
     # 키가 비어 있으면 예시(mock) 모드로 동작한다. 시연 대비용.
     gemini-api-key: ${GEMINI_API_KEY:}
-    gemini-model: ${GEMINI_MODEL:gemini-2.5-flash}
+    # gemini-2.5-flash는 새 사용자에게 더 이상 제공되지 않는다(2026-10 확인). 아이디어·결과물은 품질 우선 모델.
+    gemini-model: ${GEMINI_MODEL:gemini-3.8-flash}
+    # 단어 트리 가지 뻗기는 자주 호출되므로 빠른 모델 (측정: 3.5-flash-lite 약 1~2초, 3.8-flash 약 60초)
+    gemini-word-model: ${GEMINI_WORD_MODEL:gemini-3.5-flash-lite}
+    # 기본 모델이 실패하면 쉼표 순서대로 대체 모델을 시도한다. 비우면 대체 모델 없음.
+    gemini-fallback-model: ${GEMINI_FALLBACK_MODEL:gemini-3.5-flash,gemini-3.1-flash-lite}
     gemini-base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
-    timeout-seconds: ${AI_TIMEOUT_SECONDS:40}
+    # 기본 모델은 평소 10~15초. 이보다 훨씬 늦으면(혼잡) 기다리지 않고 대체 모델로 넘어간다.
+    timeout-seconds: ${AI_TIMEOUT_SECONDS:45}
+    word-timeout-seconds: ${AI_WORD_TIMEOUT_SECONDS:20}
+    # 대체 모델(3.5-flash, 평소 약 5초)의 대기 시간
+    fallback-timeout-seconds: ${AI_FALLBACK_TIMEOUT_SECONDS:60}
   session:
     inactive-days: 30
     expiry-cron: "0 0 4 * * *"

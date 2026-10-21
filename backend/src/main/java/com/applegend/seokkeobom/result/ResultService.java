@@ -1,5 +1,6 @@
 package com.applegend.seokkeobom.result;
 
+import com.applegend.seokkeobom.auth.Accounts;
 import com.applegend.seokkeobom.ai.AiClient;
 import com.applegend.seokkeobom.ai.AiException;
 import com.applegend.seokkeobom.ai.GenerationContext;
@@ -74,7 +75,17 @@ public class ResultService {
         Optional<Result> existing = results.findByIdeaId(ideaId);
         Result result;
         if (existing.isPresent() && !existing.get().isDeleted()) {
-            return toResponse(existing.get(), idea, userId, null);
+            Result current = existing.get();
+            if (current.getStatus() == GenerationStatus.SUCCESS) {
+                return toResponse(current, idea, userId, null);
+            }
+            // 실패했거나 오래 멈춘 실행안은 다시 만든다. 지금 만드는 중이면 중복 실행을 막는다.
+            Instant now = Instant.now();
+            if (results.markGenerating(current.getId(), GenerationStatus.GENERATING, now,
+                    now.minus(IdeaService.STALE_GENERATION)) == 0) {
+                throw ApiException.conflict("ALREADY_GENERATING", "실행안을 만들고 있어요. 잠시만 기다려 주세요.");
+            }
+            result = results.findById(current.getId()).orElseThrow();
         } else if (existing.isPresent()) {
             result = existing.get();
             result.revive(userId);
@@ -210,11 +221,13 @@ public class ResultService {
     }
 
     private ResultResponse toResponse(Result r, Idea idea, Long userId, String notice) {
-        String authorName = users.findById(r.getAuthorId()).map(User::getName).orElse("알 수 없음");
+        User author = users.findById(r.getAuthorId()).orElse(null);
+        String authorName = author == null ? "알 수 없음" : author.getName();
+        boolean saved = author != null && !author.isGuest();
         return new ResultResponse(r.getId(), r.getIdeaId(), r.getSessionId(), r.getTitle(), idea.getSummary(),
                 r.getCategoryId(), r.getCategoryName(), r.getWords(), itemsOf(r), r.getStatus(), r.getFailureReason(),
                 r.isEdited(), r.getCreatedAt(), r.getUpdatedAt(), authorName, sessions.isOwner(r.getSessionId(), userId),
-                notice, ai.mode());
+                notice, ai.mode(), saved, saved ? null : Accounts.LOGIN_PROMPT);
     }
 
     private static Map<String, String> orderBy(List<TemplateItem> items, Map<String, String> body) {
